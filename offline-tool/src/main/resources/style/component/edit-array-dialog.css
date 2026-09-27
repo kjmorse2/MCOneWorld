@@ -1,0 +1,75 @@
+* {
+    -color-table-background: #46494b;
+    -color-field-cell-odd: #46494b;
+    -color-field-cell-even: #3c3f41;
+    -color-table-line: #636769;
+    -color-table-row-selected: #636769;
+}
+
+.edit-array-table-view {
+    -fx-background-color: -color-table-background;
+}
+
+.edit-array-table-view .column-header, .edit-array-table-view .column-header .filler, .edit-array-table-view .column-header-background .filler {
+    -fx-background-color: -color-table-background;
+    -fx-border-width: 0 0 1 0;
+    -fx-border-color: -color-table-line;
+}
+
+.edit-array-table-view .table-cell {
+    -fx-text-fill: -color-text-light;
+}
+
+.edit-array-table-view .table-row-cell:even {
+    -fx-background-color: -color-field-cell-even;
+}
+
+.edit-array-table-view .table-row-cell:odd {
+    -fx-background-color: -color-field-cell-odd;
+}
+
+.edit-array-table-view .table-row-cell {
+    -fx-table-cell-border-color: -color-table-line;
+}
+
+.edit-array-table-view .table-row-cell:selected {
+    -fx-background-color: -color-table-row-selected;
+}
+
+.edit-array-table-view .text-field-table-cell {
+    -fx-padding: 1 0 0 4;
+    -fx-alignment: center-left;
+}
+
+.edit-array-table-view .text-field-table-cell .text-field {
+    -fx-padding: 0 0 0 -2;
+}
+
+.edit-array-options {
+    -fx-spacing: 3px;
+    -fx-padding: 5 0 0 0;
+}
+
+.edit-array-options .separator {
+    -fx-orientation: vertical;
+    -fx-padding: 2 10 2 10;
+    -fx-background-color: transparent;
+}
+
+.edit-array-options .separator *.line {
+    -fx-border-width: 0;
+    -fx-width: 2;
+    -fx-background-color: -color-menu-separator;
+}
+
+.edit-array-options .combo-box {
+    -fx-pref-width: 50;
+}
+
+.edit-array-options .overlap-label {
+    -fx-padding: 2 0 0 0;
+}
+
+.edit-array-options .check-box {
+    -fx-padding: -1 0 0 -1;
+}

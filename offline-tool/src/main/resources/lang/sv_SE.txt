@@ -1,0 +1,221 @@
+status.region;region
+status.chunk;chunk
+status.block;block
+status.selected;valda
+status.queue;kö
+status.total;totalt
+status.structures;strukturer
+status.overlay;överlägget
+menu.file;Fil
+menu.view;Visa
+menu.selection;Markering
+menu.tools;Verktyg
+menu.about;Om
+menu.file.new;Ny
+menu.file.open;Öppna
+menu.file.open_recent;Öppna senaste
+menu.file.open_recent.clear;Rensa
+menu.file.save;Spara
+menu.file.save_as;Spara som...
+menu.file.open_world;Öppna en värld
+menu.file.open_dimension;Öppna en annan dimension
+menu.file.open_recent_world;Öppna en tidigare värld
+menu.file.open_recent_world.clear;Återställa
+menu.file.settings;Inställningar
+menu.file.render_settings;Renderingsinställningar
+menu.file.quit;Avsluta
+menu.view.reload;Ladda om
+menu.view.chunk_grid;Chunkrutnät
+menu.view.region_grid;Regionrutnät
+menu.view.coordinates;Koordinater
+menu.view.coordinate_style;Koordinatstil
+menu.view.coordinate_style.dynamic;Dynamisk
+menu.view.coordinate_style.edge;Kant
+menu.view.coordinate_style.grid;Rutnät
+menu.view.structure_icons;Strukturer
+menu.view.select_structures;Välj strukturer
+menu.view.goto;Gå till
+menu.view.reset_zoom;Återställ zoom
+menu.view.save_screenshot;Spara skärmdump
+menu.view.clear_cache;Rensa cache
+menu.view.clear_all_cache;Rensa all cache
+menu.selection.clear;Rensa
+menu.selection.invert;Invertera
+menu.selection.invert_regions;Invertera valda regioner
+menu.selection.copy_chunks;Kopiera chunks
+menu.selection.paste_chunks;Klistra in chunks
+menu.selection.export_chunks;Exportera valda chunks
+menu.selection.delete_chunks;Radera valda chunks
+menu.selection.defragment_regions;Defragmentera markerade regioner
+menu.selection.import_selection;Importera urval från .csv
+menu.selection.export_selection;Exportera urval som .csv
+menu.selection.export_image;Exportera som bild
+menu.selection.clear_cache;Rensa cache
+menu.tools.import_chunks;Importera chunks
+menu.tools.filter_chunks;Filtrera chunks
+menu.tools.change_fields;Ändra fält
+menu.tools.edit_nbt;Ändra chunk
+menu.tools.swap_chunks;Byt chunks
+menu.tools.edit_overlays;Redigera överlägg
+menu.tools.next_overlay;Nästa överlägg
+menu.tools.next_overlay_type;Överläggstyp
+menu.tools.sum_selection;Summan av urval
+dialog.select_world.title;Välj dimension
+dialog.settings.title;Inställningar
+dialog.settings.global.language;Språk
+dialog.settings.global.language.language;Språk
+dialog.settings.processing.process.process_threads;Processeringstrådar
+dialog.settings.processing.process;Processering
+dialog.settings.processing.process.write_threads;Skrivningtrådar
+dialog.settings.processing.files.max_files;Max antal filer
+dialog.settings.global.selection.region_color;Regionfärg
+dialog.settings.global.selection.chunk_color;Chunkfärg
+dialog.settings.global.selection.pasted_chunks_color;Inklistringsfärg
+dialog.settings.rendering.shade.shade;Skugga
+dialog.settings.rendering.shade;Skugga
+dialog.settings.rendering.shade.shade_water;Skugga vatten
+dialog.settings.rendering.shade.shade_altitude;Terränghöjd
+dialog.settings.rendering.background.show_nonexistent_regions;Visa ogenererade regioner
+dialog.settings.rendering.smooth.smooth_rendering;Jämn återgivning
+dialog.settings.rendering.smooth.smooth_overlays;Jämna överlägg
+dialog.settings.rendering.background.background_pattern;Bakgrundsmönster
+dialog.settings.rendering.background;Bakgrund
+dialog.settings.rendering.zoom_level.low_detail_zoom_level;Zoomnivå för låg detaljrikedom
+dialog.settings.rendering.zoom_level.low_detail_color;Färg för låg detaljrikedom
+dialog.settings.rendering.zoom_level;Zoomnivå
+dialog.settings.global.misc.mc_saves_dir;Minecraft-sparmapp
+dialog.settings.global.misc.print_debug;Skriv ut felsökningsmeddelanden
+dialog.settings.global.misc.show_log_file;Visa loggfil
+dialog.settings.reset;Återställ
+dialog.settings.set_default;Ange som standard
+dialog.settings.tab_global;Global
+dialog.settings.tab_processing;Processering
+dialog.settings.tab_rendering;Rendering
+dialog.settings.tab_world;Värld
+dialog.settings.global.misc;Övrigt
+dialog.settings.processing.files;Filer
+dialog.settings.rendering.smooth;Jämnhet
+dialog.settings.global.selection;Urval
+dialog.settings.world.paths;Banor
+dialog.settings.world.paths.poi;POI
+dialog.settings.world.paths.entities;Enheter
+dialog.settings.rendering.layers.render_height;Renderingshöjd
+dialog.settings.rendering.layers.render_layer_only;Rendera endast lager
+dialog.settings.rendering.layers;Skikt
+dialog.settings.rendering.structure_icons;Strukturikoner
+dialog.settings.rendering.structure_icon_size;Ikonstorlek
+dialog.settings.rendering.structure_icon_border_size;Kantstorlek
+dialog.settings.rendering.layers.render_caves;Rendera grottor
+dialog.goto.title;Gå till plats
+dialog.confirmation.question;Är du säker?
+dialog.defragment_regions_confirmation.title;Defragmentera regioner
+dialog.defragment_regions_confirmation.header_short;Du är på väg att defragmentera ett okänt antal regioner.
+dialog.defragment_regions_confirmation.header_verbose;Du är på väg att defragmentera %d regioner.
+dialog.delete_chunks_confirmation.title;Radera chunks
+dialog.delete_chunks_confirmation.header_short;Du är på väg att radera ett okänt antal chunks från denna värld.
+dialog.delete_chunks_confirmation.header_verbose;Du är på väg att radera %d chunks från denna värld.
+dialog.image_export_confirmation.title;Exportera bild
+dialog.image_export_confirmation.header_short;Du är på väg att skapa en bild av okända proportioner.
+dialog.image_export_confirmation.header_verbose;Du är på väg att skapa en bild med dimensionerna %dx%d.
+dialog.import_chunks_confirmation.title;Importera chunks
+dialog.import_chunks_confirmation.header;Du är på väg att importera ett okänt antal chunks till denna värld.
+dialog.import_chunks_confirmation.options;Inställningar
+dialog.import_chunks_confirmation.options.offset;Offset
+dialog.import_chunks_confirmation.options.overwrite;Skriv över existerande chunks
+dialog.import_chunks_confirmation.options.selection_only;Tillämpa endast till markering
+dialog.import_chunks_confirmation.options.y_offset;Y-offset
+dialog.import_chunks_confirmation.options.sections;Sektioner
+dialog.import_chunks_confirmation.warning;Warning: Att importera chunks med en offset kommer inte att uppdatera kommandoblock-innehåll.
+dialog.export_chunks_confirmation.title;Exportera chunks
+dialog.export_chunks_confirmation.header_short;Du är på väg att exportera ett okänt antal chunks från denna värld.
+dialog.export_chunks_confirmation.header_verbose;Du är på väg att exportera %d chunks från denna värld.
+dialog.import_selection.title;Importera urval från .csv
+dialog.import_selection.header;Den här världen har redan ett urval.\nHur ska det nya urvalet importeras?
+dialog.import_selection.overwrite;Skriva över
+dialog.import_selection.merge;Lägg till
+dialog.import_selection.subtract;Subtrahera
+dialog.filter_chunks.title;Filtrera chunks
+dialog.filter_chunks.filter.add.tooltip;Lägg till ett nytt villkor nedanför detta.
+dialog.filter_chunks.filter.delete.tooltip;Radera detta villkor.
+dialog.filter_chunks.filter.type.tooltip;Denna typ av villkor.
+dialog.filter_chunks.filter.operator.tooltip;Formeln för att länka flera villkor.
+dialog.filter_chunks.filter.comparator.tooltip;Jämförare.
+dialog.filter_chunks.select;Välj
+dialog.filter_chunks.select.tooltip;Skapar en markering av de påverkade chunksen.
+dialog.filter_chunks.export;Exportera
+dialog.filter_chunks.export.tooltip;Exporterar alla påverkade chunks till en ny mapp.
+dialog.filter_chunks.delete;Radera
+dialog.filter_chunks.delete.tooltip;Raderar alla påverkade chunks från världen.
+dialog.filter_chunks.selection_only;Tillämpa endast till markering
+dialog.filter_chunks.add_selection;Lägg till markering
+dialog.filter_chunks.subtract_selection;Ta bort markering
+dialog.filter_chunks.selection_radius;Urvalsradie
+dialog.filter_chunks.tab_query;Query
+dialog.filter_chunks.tab_script;Script
+dialog.edit_overlays.title;Redigera överlägg
+dialog.edit_overlays.overlay_active.tooltip;Aktiva
+dialog.edit_overlays.delete.tooltip;Radera
+dialog.edit_overlays.tab_presets;Överlagor
+dialog.edit_overlays.tab_script;Script
+dialog.edit_overlays.create_overlay;Skapa Överlagra
+dialog.change_nbt.title;Ändra NBT
+dialog.change_nbt.change;Ändra
+dialog.change_nbt.change.tooltip;Ändrar endast värdet om dess nyckel finns.
+dialog.change_nbt.force;Tvinga
+dialog.change_nbt.force.tooltip;Skapar fältet om det inte existerar.
+dialog.change_nbt.selection_only;Tillämpa endast till markering
+dialog.change_nbt.selection_only.tooltip;Om detta filter enbart ska appliceras till den nuvarande markeringen.
+dialog.change_nbt_confirmation.title;Ändra NBT
+dialog.change_nbt_confirmation.header_short;Du är på väg att förändra data i ett okänt antal chunks i denna värld.
+dialog.change_nbt.tab_query;Query
+dialog.change_nbt.tab_script;Script
+dialog.edit_nbt.title;Ändra chunk
+dialog.edit_nbt.placeholder.loading;laddar...
+dialog.edit_nbt.placeholder.no_chunk_data;ingen chunkdata hittades
+dialog.edit_nbt.placeholder.no_region_file;regionfilen existerar inte
+dialog.edit_array.index;Index
+dialog.edit_array.value;Värde
+dialog.about.title;Om
+dialog.about.header;Om MCA Selector
+dialog.about.version;Version:
+dialog.about.version.unknown;okänt
+dialog.about.version.check;kontrollera
+dialog.about.version.checking;kontrollerar...
+dialog.about.version.up_to_date;Uppdaterad
+dialog.about.version.error;Fel
+dialog.about.license;Licens:
+dialog.about.copyright;Upphovsrätt:
+dialog.about.source;Källa:
+dialog.progress.no_files;inga filer
+dialog.progress.running;kör...
+dialog.progress.cancelling;avbryter...
+dialog.progress.collecting_data;samlar in data...
+dialog.progress.done;klar.
+dialog.progress.scanning_files;Skannar filer...
+dialog.progress.title.loading_world;Laddar världen...
+dialog.progress.title.defragmenting_regions;Defragmenterar regioner...
+dialog.progress.title.deleting_selection;Raderar markering...
+dialog.progress.title.creating_image;Skapar bild...
+dialog.progress.title.saving_image;Sparar bild...
+dialog.progress.title.exporting_selection;Exporterar markering...
+dialog.progress.title.importing_chunks;Importerar chunks...
+dialog.progress.title.deleting_filtered_chunks;Raderar filtrerade chunks...
+dialog.progress.title.exporting_filtered_chunks;Exporterar filtrerade chunks...
+dialog.progress.title.selecting_filtered_chunks;Markerar filtrerade chunks...
+dialog.progress.title.changing_nbt_data;Ändrar NBT-data...
+dialog.progress.title.saving_chunk;Sparar chunk till fil...
+dialog.progress.title.running_before;Kör "before()"...
+dialog.progress.title.running_after;Kör "after()"...
+dialog.progress.title.summing;Räkna summan...
+dialog.error.button.copy_to_clipboard;Kopiera till urklipp
+dialog.error.title;Fel
+dialog.error.header;Ett fel uppstod
+dialog.error.copied_to_clipboard;Kopieras till urklipp!
+dialog.unsaved_selection.title;Osparat val
+dialog.unsaved_selection.header;Det finns ett osparat val.
+dialog.unsaved_script.title;Ej sparat skript
+dialog.unsaved_script.header;Det finns ett ej sparat skript.
+dialog.request_number.title.array_length;Längden på arrayen
+dialog.request_number.title.enter_number;Värde
+button.cancel;Avbryt
+button.ok;OK

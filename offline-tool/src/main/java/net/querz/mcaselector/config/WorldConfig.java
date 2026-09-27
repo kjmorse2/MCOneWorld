@@ -1,0 +1,321 @@
+package net.querz.mcaselector.config;
+
+import com.google.gson.*;
+import net.querz.mcaselector.config.adapter.ColorAdapter;
+import net.querz.mcaselector.config.adapter.FileAdapter;
+import net.querz.mcaselector.config.adapter.WorldDirectoriesAdapter;
+import net.querz.mcaselector.io.WorldDirectories;
+import net.querz.mcaselector.logging.GsonNamingStrategy;
+import net.querz.mcaselector.ui.Color;
+import net.querz.mcaselector.util.math.Bits;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import java.io.File;
+import java.lang.reflect.Modifier;
+import java.util.List;
+import java.util.UUID;
+
+public class WorldConfig extends Config {
+
+	private static final Gson gsonInstance;
+
+	static {
+		GsonBuilder builder = new GsonBuilder();
+		builder.registerTypeAdapter(Color.class, new ColorAdapter());
+		builder.setPrettyPrinting();
+		gsonInstance = builder.create();
+	}
+
+	// defaults
+	public static final int DEFAULT_RENDER_HEIGHT = 319;
+	public static final boolean DEFAULT_RENDER_LAYER_ONLY = false;
+	public static final boolean DEFAULT_RENDER_CAVES = false;
+	public static final boolean DEFAULT_SHADE = true;
+	public static final boolean DEFAULT_SHADE_WATER = true;
+	public static final boolean DEFAULT_SHADE_ALTITUDE = true;
+	public static final boolean DEFAULT_SMOOTH_RENDERING = false;
+	public static final boolean DEFAULT_SMOOTH_OVERLAYS = true;
+	public static final String DEFAULT_TILEMAP_BACKGROUND = "BLACK";
+	public static final boolean DEFAULT_SHOW_NONEXISTENT_REGIONS = true;
+	public static final int DEFAULT_STRUCTURE_ICON_SIZE = 32;
+	public static final int DEFAULT_STRUCTURE_ICON_BORDER_SIZE = 1;
+	public static final int DEFAULT_RENDER_HEADER_ONLY_ZOOM_LEVEL = 16;
+	public static final Color DEFAULT_ZOOM_LEVEL_LOD_COLOR = new Color(0, 0.64, 0, 1);
+
+	// transient values
+	private transient File regionDir = null;
+	private transient WorldDirectories worldDirs = null;
+	private transient UUID worldUUID = null;
+	private transient File cacheDir = null;
+	private transient File cacheDBDir = null;
+	private transient List<File> dimensionDirectories = null;
+	private transient File[] zoomLevelCacheDirs = null;
+
+	// attributes
+	private int renderHeight = DEFAULT_RENDER_HEIGHT;
+	private boolean renderLayerOnly = DEFAULT_RENDER_LAYER_ONLY;
+	private boolean renderCaves = DEFAULT_RENDER_CAVES;
+	private boolean shade = DEFAULT_SHADE;
+	private boolean shadeWater = DEFAULT_SHADE_WATER;
+	private boolean shadeAltitude = DEFAULT_SHADE_ALTITUDE;
+	private boolean smoothRendering = DEFAULT_SMOOTH_RENDERING;
+	private boolean smoothOverlays = DEFAULT_SMOOTH_OVERLAYS;
+	private String tileMapBackground = DEFAULT_TILEMAP_BACKGROUND;
+	private boolean showNonexistentRegions = DEFAULT_SHOW_NONEXISTENT_REGIONS;
+	private int structureIconSize = DEFAULT_STRUCTURE_ICON_SIZE;
+	private int structureIconBorderSize = DEFAULT_STRUCTURE_ICON_BORDER_SIZE;
+	private int renderHeaderOnlyZoomLevel = DEFAULT_RENDER_HEADER_ONLY_ZOOM_LEVEL;
+	private Color zoomLevelLODColor = DEFAULT_ZOOM_LEVEL_LOD_COLOR;
+
+	private static final Logger LOGGER = LogManager.getLogger(WorldConfig.class);
+
+	public WorldConfig() {}
+
+	private WorldConfig(WorldConfig cfg) {
+		if (cfg != null) {
+			this.renderHeight = cfg.renderHeight;
+			this.renderLayerOnly = cfg.renderLayerOnly;
+			this.renderCaves = cfg.renderCaves;
+			this.shade = cfg.shade;
+			this.shadeWater = cfg.shadeWater;
+			this.shadeAltitude = cfg.shadeAltitude;
+			this.smoothRendering = cfg.smoothRendering;
+			this.smoothOverlays = cfg.smoothOverlays;
+			this.tileMapBackground = cfg.tileMapBackground;
+			this.showNonexistentRegions = cfg.showNonexistentRegions;
+			this.structureIconSize = cfg.structureIconSize;
+			this.structureIconBorderSize = cfg.structureIconBorderSize;
+			this.renderHeaderOnlyZoomLevel = cfg.renderHeaderOnlyZoomLevel;
+			this.zoomLevelLODColor = cfg.zoomLevelLODColor;
+		}
+	}
+
+	public File getRegionDir() {
+		return regionDir;
+	}
+
+	public void setWorldDirs(WorldDirectories worldDirs) {
+		this.worldDirs = worldDirs;
+		this.worldUUID = UUID.nameUUIDFromBytes(worldDirs.getRegion().getAbsolutePath().getBytes());
+		setCacheDir(BASE_CACHE_DIR);
+		this.regionDir = worldDirs.getRegion();
+		this.zoomLevelCacheDirs = new File[Bits.lsbPosition(MAX_ZOOM_LEVEL) + 1];
+		for (int i = MAX_ZOOM_LEVEL; i > 0; i >>= 1) {
+			this.zoomLevelCacheDirs[Bits.lsbPosition(i)] = new File(cacheDir, "" + i);
+		}
+	}
+
+	public WorldDirectories getWorldDirs() {
+		return worldDirs;
+	}
+
+	public UUID getWorldUUID() {
+		return worldUUID;
+	}
+
+	public File getCacheDir() {
+		return cacheDir;
+	}
+
+	public File getCacheDBDir() {
+		return cacheDBDir;
+	}
+
+	public File getCacheDir(int zoomLevel) {
+		return zoomLevelCacheDirs[Bits.lsbPosition(zoomLevel)];
+	}
+
+	public File[] getCacheDirs() {
+		return zoomLevelCacheDirs;
+	}
+
+	public void setCacheDir(File cacheDir) {
+		this.cacheDir = new File(cacheDir, worldUUID.toString().replace("-", ""));
+		this.cacheDBDir = new File(cacheDir, "cache");
+	}
+
+	public List<File> getDimensionDirectories() {
+		return dimensionDirectories;
+	}
+
+	public int getRenderHeight() {
+		return renderHeight;
+	}
+
+	public void setRenderHeight(int renderHeight) {
+		this.renderHeight = renderHeight;
+	}
+
+	public boolean getRenderLayerOnly() {
+		return renderLayerOnly;
+	}
+
+	public void setRenderLayerOnly(boolean renderLayerOnly) {
+		this.renderLayerOnly = renderLayerOnly;
+	}
+
+	public boolean getRenderCaves() {
+		return renderCaves;
+	}
+
+	public void setRenderCaves(boolean renderCaves) {
+		this.renderCaves = renderCaves;
+	}
+
+	public boolean getShade() {
+		return shade;
+	}
+
+	public void setShade(boolean shade) {
+		this.shade = shade;
+	}
+
+	public boolean getShadeWater() {
+		return shadeWater;
+	}
+
+	public void setShadeWater(boolean shadeWater) {
+		this.shadeWater = shadeWater;
+	}
+
+	public boolean getShadeAltitude() {
+		return shadeAltitude;
+	}
+
+	public void setShadeAltitude(boolean shadeAltitude) {
+		this.shadeAltitude = shadeAltitude;
+	}
+
+	public boolean getSmoothRendering() {
+		return smoothRendering;
+	}
+
+	public void setSmoothRendering(boolean smoothRendering) {
+		this.smoothRendering = smoothRendering;
+	}
+
+	public boolean getSmoothOverlays() {
+		return smoothOverlays;
+	}
+
+	public void setSmoothOverlays(boolean smoothOverlays) {
+		this.smoothOverlays = smoothOverlays;
+	}
+
+	public int getStructureIconSize() {
+		return structureIconSize;
+	}
+
+	public void setStructureIconSize(int structureIconSize) {
+		this.structureIconSize = structureIconSize;
+	}
+
+	public int getStructureIconBorderSize() {
+		return structureIconBorderSize;
+	}
+
+	public void setStructureIconBorderSize(int structureIconBorderSize) {
+		this.structureIconBorderSize = structureIconBorderSize;
+	}
+
+	public int getRenderHeaderOnlyZoomLevel() {
+		return renderHeaderOnlyZoomLevel;
+	}
+
+	public void setRenderHeaderOnlyZoomLevel(int renderHeaderOnlyZoomLevel) {
+		this.renderHeaderOnlyZoomLevel = renderHeaderOnlyZoomLevel;
+	}
+
+	public Color getZoomLevelLODColor() {
+		return zoomLevelLODColor;
+	}
+
+	public void setZoomLevelLODColor(Color zoomLevelLODColor) {
+		this.zoomLevelLODColor = zoomLevelLODColor;
+	}
+
+	public String getTileMapBackground() {
+		return tileMapBackground;
+	}
+
+	public void setTileMapBackground(String tileMapBackground) {
+		this.tileMapBackground = tileMapBackground;
+	}
+
+	public boolean getShowNonexistentRegions() {
+		return showNonexistentRegions;
+	}
+
+	public void setShowNonexistentRegions(boolean showNonexistentRegions) {
+		this.showNonexistentRegions = showNonexistentRegions;
+	}
+
+	public void saveDefault() {
+		save(gsonInstance, BASE_DEFAULT_WORLD_CONFIG_FILE);
+	}
+
+	@Override
+	public void save() {
+		save(gsonInstance, new File(cacheDir, "world_settings.json"));
+	}
+
+	public static WorldConfig loadDefault() {
+		if (!BASE_DEFAULT_WORLD_CONFIG_FILE.exists() || !BASE_DEFAULT_WORLD_CONFIG_FILE.isFile()) {
+			return null;
+		}
+		String json = loadString(BASE_DEFAULT_WORLD_CONFIG_FILE);
+		if (json == null) {
+			return null;
+		}
+		return gsonInstance.fromJson(json, WorldConfig.class);
+	}
+
+	public static WorldConfig load(WorldDirectories worldDirectories, List<File> dimensionDirectories) {
+		LOGGER.debug("setting world directories to {}", worldDirectories);
+
+		UUID worldUUID = UUID.nameUUIDFromBytes(worldDirectories.getRegion().getAbsolutePath().getBytes());
+		File cacheDir = new File(BASE_CACHE_DIR, worldUUID.toString().replace("-", ""));
+
+		String json = loadString(new File(cacheDir, "world_settings.json"));
+		WorldConfig cfg;
+		if (json == null) {
+			cfg = new WorldConfig(ConfigProvider.DEFAULT_WORLD);
+		} else {
+			cfg = gsonInstance.fromJson(json, WorldConfig.class);
+		}
+
+		cfg.worldUUID = worldUUID;
+		cfg.regionDir = worldDirectories.getRegion();
+		cfg.worldDirs = worldDirectories;
+		cfg.dimensionDirectories = dimensionDirectories;
+		cfg.setCacheDir(BASE_CACHE_DIR);
+		cfg.zoomLevelCacheDirs = new File[Bits.lsbPosition(MAX_ZOOM_LEVEL) + 1];
+		for (int i = MAX_ZOOM_LEVEL; i > 0; i >>= 1) {
+			cfg.zoomLevelCacheDirs[Bits.lsbPosition(i)] = new File(cfg.cacheDir, "" + i);
+		}
+
+		return cfg;
+	}
+
+	private static final Gson toStringGsonInstance;
+
+	static {
+		GsonBuilder builder = new GsonBuilder();
+		builder.excludeFieldsWithModifiers(Modifier.STATIC);
+		builder.registerTypeAdapter(Color.class, new ColorAdapter());
+		builder.serializeNulls();
+		builder.setFieldNamingStrategy(new GsonNamingStrategy());
+		builder.registerTypeAdapter(File.class, new FileAdapter(BASE_DIR.getAbsolutePath()));
+		builder.registerTypeAdapter(WorldDirectories.class, new WorldDirectoriesAdapter());
+		toStringGsonInstance = builder.create();
+	}
+
+	@Override
+	public String toString() {
+		return toStringGsonInstance.toJson(this);
+	}
+
+	public WorldConfig copyForSettings() {
+		return new WorldConfig(this);
+	}
+}

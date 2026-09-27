@@ -1,0 +1,221 @@
+status.region;region
+status.chunk;chunk
+status.block;blok
+status.selected;vybráno
+status.queue;fronta
+status.total;celkem regionů
+status.structures;struktury
+status.overlay;překrytí
+menu.file;Soubor
+menu.view;Pohled
+menu.selection;Výběr
+menu.tools;Nástroje
+menu.about;O aplikaci
+menu.file.new;Nový
+menu.file.open;Otevřít
+menu.file.open_recent;Otevřít nedávné
+menu.file.open_recent.clear;Vyčistit
+menu.file.save;Uložit
+menu.file.save_as;Uložit jako...
+menu.file.open_world;Otevřete svět
+menu.file.open_dimension;Otevřete další Dimenzi
+menu.file.open_recent_world;Otevřít předchozí svět
+menu.file.open_recent_world.clear;Vyčistit
+menu.file.settings;Nastavení
+menu.file.render_settings;Nastavení vykreslování
+menu.file.quit;Opustit
+menu.view.reload;Znovu načíst
+menu.view.chunk_grid;Mřížka chunků
+menu.view.region_grid;Mřížka regionů
+menu.view.coordinates;Souřadnice
+menu.view.coordinate_style;Styl souřadnic
+menu.view.coordinate_style.dynamic;Dynamický
+menu.view.coordinate_style.edge;Okraj
+menu.view.coordinate_style.grid;Mřížka
+menu.view.structure_icons;Struktury
+menu.view.select_structures;Vybrat struktury
+menu.view.goto;Přejít
+menu.view.reset_zoom;Obnovit přiblížení
+menu.view.save_screenshot;Uložit snímek obrazovky
+menu.view.clear_cache;Smazat cache
+menu.view.clear_all_cache;Smazat celou cache
+menu.selection.clear;Vyčistit
+menu.selection.invert;Invertovat
+menu.selection.invert_regions;Invertovat vybrané oblasti
+menu.selection.copy_chunks;Kopírovat chunky
+menu.selection.paste_chunks;Vložit chunky
+menu.selection.export_chunks;Exportovat vybrané chunky
+menu.selection.delete_chunks;Smazat vybrané chunky
+menu.selection.defragment_regions;Defragmentovat vybrané regiony
+menu.selection.import_selection;Importovat výběr z .csv
+menu.selection.export_selection;Exportovat výběr jako .csv
+menu.selection.export_image;Exportovat jako obrázek
+menu.selection.clear_cache;Smazat keš
+menu.tools.import_chunks;Importovat chunky
+menu.tools.filter_chunks;Filtrovat chunky
+menu.tools.change_fields;Změnit pole
+menu.tools.edit_nbt;Upravit chunk
+menu.tools.swap_chunks;Vyměňovat chunky
+menu.tools.edit_overlays;Upravit překryvy
+menu.tools.next_overlay;Další překrytí
+menu.tools.next_overlay_type;Typ překrytí
+menu.tools.sum_selection;Výběr součtu
+dialog.select_world.title;Vyberte Dimenzi
+dialog.settings.title;Nastavení
+dialog.settings.global.language;Jazyk
+dialog.settings.global.language.language;Jazyk
+dialog.settings.processing.process.process_threads;Procesní vlákna
+dialog.settings.processing.process;Proces
+dialog.settings.processing.process.write_threads;Pište vlákna
+dialog.settings.processing.files.max_files;Maximální počet souborů
+dialog.settings.global.selection.region_color;Barva regionů
+dialog.settings.global.selection.chunk_color;Barva chunků
+dialog.settings.global.selection.pasted_chunks_color;Barva vkládaných chunků
+dialog.settings.rendering.shade.shade;Odstín
+dialog.settings.rendering.shade;Odstín
+dialog.settings.rendering.shade.shade_water;Stínovat vodu
+dialog.settings.rendering.shade.shade_altitude;Výška terénu
+dialog.settings.rendering.background.show_nonexistent_regions;Zobrazit neexistující oblasti
+dialog.settings.rendering.smooth.smooth_rendering;Plynulé vykreslování
+dialog.settings.rendering.smooth.smooth_overlays;Hladké překrytí
+dialog.settings.rendering.background.background_pattern;Vzor pozadí
+dialog.settings.rendering.background;Pozadí
+dialog.settings.rendering.zoom_level.low_detail_zoom_level;Úroveň přiblížení s nízkými detaily
+dialog.settings.rendering.zoom_level.low_detail_color;Barva nízkých detailů
+dialog.settings.rendering.zoom_level;Úroveň přiblížení
+dialog.settings.global.misc.mc_saves_dir;Umístění MC světů
+dialog.settings.global.misc.print_debug;Tisk zpráv o ladění
+dialog.settings.global.misc.show_log_file;Zobrazit soubor protokolu
+dialog.settings.reset;Obnovit
+dialog.settings.set_default;Nastavit jako výchozí
+dialog.settings.tab_global;Globální
+dialog.settings.tab_processing;zpracovává se
+dialog.settings.tab_rendering;Vykreslování
+dialog.settings.tab_world;Svět
+dialog.settings.global.misc;Různé
+dialog.settings.processing.files;Soubory
+dialog.settings.rendering.smooth;Hladký
+dialog.settings.global.selection;Výběr
+dialog.settings.world.paths;Cesty
+dialog.settings.world.paths.poi;POI
+dialog.settings.world.paths.entities;Subjekty
+dialog.settings.rendering.layers.render_height;Výška vykreslení
+dialog.settings.rendering.layers.render_layer_only;Pouze rendrovací vrstva
+dialog.settings.rendering.layers;Vrstvy
+dialog.settings.rendering.structure_icons;Ikony struktur
+dialog.settings.rendering.structure_icon_size;Velikost ikony
+dialog.settings.rendering.structure_icon_border_size;Velikost ohraničení
+dialog.settings.rendering.layers.render_caves;Render jeskyně
+dialog.goto.title;Přejít na pozici
+dialog.confirmation.question;Jste si jisti?
+dialog.defragment_regions_confirmation.title;Defragmentovat regiony
+dialog.defragment_regions_confirmation.header_short;Chystáte se defragmentovat neznámý počet regionů.
+dialog.defragment_regions_confirmation.header_verbose;Chystáte se defragmentovat %d regionů.
+dialog.delete_chunks_confirmation.title;Smazat chunky
+dialog.delete_chunks_confirmation.header_short;Chcete smazat neznámý počet chunků vybraného světa.
+dialog.delete_chunks_confirmation.header_verbose;Chcete smazat  %d chunků vybraného světa.
+dialog.image_export_confirmation.title;Exportovat obrázek
+dialog.image_export_confirmation.header_short;Chystáte se vytvořit obrázek neznámých rozměrů.
+dialog.image_export_confirmation.header_verbose;Chystáte se vytvořit obrázek s rozměry %dx%d.
+dialog.import_chunks_confirmation.title;Importovat chunky
+dialog.import_chunks_confirmation.header;Chcete importovat neznámý počet chunků do vybraného světa.
+dialog.import_chunks_confirmation.options;Volby
+dialog.import_chunks_confirmation.options.offset;Posun
+dialog.import_chunks_confirmation.options.overwrite;Přepsat existující chunky
+dialog.import_chunks_confirmation.options.selection_only;Aplikovat pouze na výběr
+dialog.import_chunks_confirmation.options.y_offset;Y offset
+dialog.import_chunks_confirmation.options.sections;Sekce
+dialog.import_chunks_confirmation.warning;Upozornění: Při importování chunků s posunem se neaktualizuje obsah příkazových bloků.
+dialog.export_chunks_confirmation.title;Exportovat chunky
+dialog.export_chunks_confirmation.header_short;Chcete exportovat neznámý počet chunků vybraného světa.
+dialog.export_chunks_confirmation.header_verbose;Chcete exportovat %d chunků vybraného světa.
+dialog.import_selection.title;Importovat výběr z .csv
+dialog.import_selection.header;Tento svět již má výběr.\nJak by měl být nový výběr importován?
+dialog.import_selection.overwrite;Přepsat
+dialog.import_selection.merge;Přidat
+dialog.import_selection.subtract;Odečíst
+dialog.filter_chunks.title;Filtrovat chunky
+dialog.filter_chunks.filter.add.tooltip;Přidá další podmínku pod stávající.
+dialog.filter_chunks.filter.delete.tooltip;Smaže tuto podmínku.
+dialog.filter_chunks.filter.type.tooltip;Typ podmínky.
+dialog.filter_chunks.filter.operator.tooltip;Operátor pro spojení několika podmínek.
+dialog.filter_chunks.filter.comparator.tooltip;Porovnávač.
+dialog.filter_chunks.select;Vybrat
+dialog.filter_chunks.select.tooltip;Vytvoří výběr ovlivněných chunků.
+dialog.filter_chunks.export;Exportovat
+dialog.filter_chunks.export.tooltip;Exportuje všechny ovlivněné chunky do nové složky.
+dialog.filter_chunks.delete;Smazat
+dialog.filter_chunks.delete.tooltip;Smaže všechny ovlivněné chunky z aktuálního světa.
+dialog.filter_chunks.selection_only;Aplikovat pouze na výběr
+dialog.filter_chunks.add_selection;Přidat výběr
+dialog.filter_chunks.subtract_selection;Odebrat výběr
+dialog.filter_chunks.selection_radius;Poloměr výběru
+dialog.filter_chunks.tab_query;Dotaz
+dialog.filter_chunks.tab_script;Skript
+dialog.edit_overlays.title;Upravit překryvy
+dialog.edit_overlays.overlay_active.tooltip;Aktivní
+dialog.edit_overlays.delete.tooltip;Vymazat
+dialog.edit_overlays.tab_presets;Předvolby
+dialog.edit_overlays.tab_script;Skript
+dialog.edit_overlays.create_overlay;Vytvořit překryv
+dialog.change_nbt.title;Změnit NBT
+dialog.change_nbt.change;změnit
+dialog.change_nbt.change.tooltip;Změní hodnotu pouze pokud klíč existuje.
+dialog.change_nbt.force;Vynutit
+dialog.change_nbt.force.tooltip;Pokud tag neexistuje, vytvoří jej.
+dialog.change_nbt.selection_only;Aplikovat pouze na výběr
+dialog.change_nbt.selection_only.tooltip;Zda má být filtr aplikován pouze na aktuální výběr.
+dialog.change_nbt_confirmation.title;Změnit NBT
+dialog.change_nbt_confirmation.header_short;Chcete změnit data v neznámém počtu chunků vybraného světa.
+dialog.change_nbt.tab_query;Dotaz
+dialog.change_nbt.tab_script;Skript
+dialog.edit_nbt.title;Upravit chunků
+dialog.edit_nbt.placeholder.loading;načítání...
+dialog.edit_nbt.placeholder.no_chunk_data;nebyly nalezeny žádné údaje o chunku
+dialog.edit_nbt.placeholder.no_region_file;soubor regionu neexistuje
+dialog.edit_array.index;Index
+dialog.edit_array.value;Hodnota
+dialog.about.title;O aplikaci
+dialog.about.header;O aplikaci MCA Selector
+dialog.about.version;Verze:
+dialog.about.version.unknown;neznámá
+dialog.about.version.check;zkontrolovat
+dialog.about.version.checking;kontroluji...
+dialog.about.version.up_to_date;Aktuální
+dialog.about.version.error;Chyba
+dialog.about.license;Licence:
+dialog.about.copyright;Copyright:
+dialog.about.source;Zdroj:
+dialog.progress.no_files;žádné soubory
+dialog.progress.running;probíhá...
+dialog.progress.cancelling;rušení...
+dialog.progress.collecting_data;sběr dat...
+dialog.progress.done;hotovo.
+dialog.progress.scanning_files;Skenování souborů...
+dialog.progress.title.loading_world;Načítání světa...
+dialog.progress.title.defragmenting_regions;Defragmentace regionů...
+dialog.progress.title.deleting_selection;Mazání výběru...
+dialog.progress.title.creating_image;Vytváření obrázku...
+dialog.progress.title.saving_image;Ukládání obrázku...
+dialog.progress.title.exporting_selection;Exportování výběru...
+dialog.progress.title.importing_chunks;Importování chunků...
+dialog.progress.title.deleting_filtered_chunks;Mazání filtrovaných chunků...
+dialog.progress.title.exporting_filtered_chunks;Exportování filtrovaných chunků...
+dialog.progress.title.selecting_filtered_chunks;Vybírání filtrovaných chunků...
+dialog.progress.title.changing_nbt_data;Měním NBT data...
+dialog.progress.title.saving_chunk;Ukládání chunků do souboru...
+dialog.progress.title.running_before;Proveďte "before()"...
+dialog.progress.title.running_after;Provést "after()"...
+dialog.progress.title.summing;Počet...
+dialog.error.button.copy_to_clipboard;Zkopírovat do schránky
+dialog.error.title;Chyba
+dialog.error.header;Vyskytla se chyba
+dialog.error.copied_to_clipboard;Zkopírováno do schránky!
+dialog.unsaved_selection.title;Neuložený výběr
+dialog.unsaved_selection.header;Existuje neuložený výběr.
+dialog.unsaved_script.title;Neuklizený skript
+dialog.unsaved_script.header;Existuje neuklizený skript.
+dialog.request_number.title.array_length;Délka pole
+dialog.request_number.title.enter_number;Hodnota
+button.cancel;Zrušit
+button.ok;OK

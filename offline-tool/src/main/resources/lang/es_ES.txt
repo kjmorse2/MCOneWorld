@@ -1,0 +1,221 @@
+status.region;región
+status.chunk;chunk
+status.block;bloque
+status.selected;seleccionado
+status.queue;cola
+status.total;región total
+status.structures;estructuras
+status.overlay;superposición
+menu.file;Archivo
+menu.view;Vista
+menu.selection;Selección
+menu.tools;Herramientas
+menu.about;Acerca de
+menu.file.new;Nuevo
+menu.file.open;Abrir
+menu.file.open_recent;Abrir reciente
+menu.file.open_recent.clear;Borrar
+menu.file.save;Guardar
+menu.file.save_as;Guardar como...
+menu.file.open_world;Abrir un mundo
+menu.file.open_dimension;Abre otra dimensión
+menu.file.open_recent_world;Abrir mundo anterior
+menu.file.open_recent_world.clear;Reiniciar
+menu.file.settings;Configuración
+menu.file.render_settings;Configuración de renderizado
+menu.file.quit;Salir
+menu.view.reload;Recargar
+menu.view.chunk_grid;Cuadrícula de Chunks
+menu.view.region_grid;Cuadrícula de Regiones
+menu.view.coordinates;Coordenadas
+menu.view.coordinate_style;Estilo de coordenadas
+menu.view.coordinate_style.dynamic;Dinámico
+menu.view.coordinate_style.edge;Borde
+menu.view.coordinate_style.grid;Cuadrícula
+menu.view.structure_icons;Estructuras
+menu.view.select_structures;Seleccionar estructuras
+menu.view.goto;Ir a
+menu.view.reset_zoom;Restablecer zoom
+menu.view.save_screenshot;Guardar captura de pantalla
+menu.view.clear_cache;Limpiar caché
+menu.view.clear_all_cache;Limpiar toda la caché
+menu.selection.clear;Deseleccionar todo
+menu.selection.invert;Invertir
+menu.selection.invert_regions;Invertir regiones seleccionadas
+menu.selection.copy_chunks;Copiar chunks
+menu.selection.paste_chunks;Pegar chunks
+menu.selection.export_chunks;Exportar chunks seleccionados
+menu.selection.delete_chunks;Borrar chunks seleccionados
+menu.selection.defragment_regions;Desfragmentar las regiones seleccionadas
+menu.selection.import_selection;Importar una selección de .csv
+menu.selection.export_selection;Exportar selección como .csv
+menu.selection.export_image;Exportar como imagen
+menu.selection.clear_cache;Vaciar la caché
+menu.tools.import_chunks;Importar chunks
+menu.tools.filter_chunks;Filtrar chunks
+menu.tools.change_fields;Cambiar los campos
+menu.tools.edit_nbt;Editar chunk
+menu.tools.swap_chunks;Intercambiar chunks
+menu.tools.edit_overlays;Editar superposiciones
+menu.tools.next_overlay;Siguiente superposición
+menu.tools.next_overlay_type;Tipo de superposición
+menu.tools.sum_selection;Suma de selección
+dialog.select_world.title;Seleccione una dimensión
+dialog.settings.title;Configuración
+dialog.settings.global.language;Idioma
+dialog.settings.global.language.language;Idioma
+dialog.settings.processing.process.process_threads;Hilos de proceso
+dialog.settings.processing.process;Proceso
+dialog.settings.processing.process.write_threads;Escribir hilos
+dialog.settings.processing.files.max_files;Archivos máximos
+dialog.settings.global.selection.region_color;Color de la región
+dialog.settings.global.selection.chunk_color;Color del trozo
+dialog.settings.global.selection.pasted_chunks_color;Color de trozos pegados
+dialog.settings.rendering.shade.shade;Sombra
+dialog.settings.rendering.shade;Sombra
+dialog.settings.rendering.shade.shade_water;Agua de sombra
+dialog.settings.rendering.shade.shade_altitude;Altura del terreno
+dialog.settings.rendering.background.show_nonexistent_regions;Mostrar regiones inexistentes
+dialog.settings.rendering.smooth.smooth_rendering;Renderizado suave
+dialog.settings.rendering.smooth.smooth_overlays;Superposiciones suaves
+dialog.settings.rendering.background.background_pattern;Patrón de fondo
+dialog.settings.rendering.background;Fondo
+dialog.settings.rendering.zoom_level.low_detail_zoom_level;Nivel de zoom de bajo detalle
+dialog.settings.rendering.zoom_level.low_detail_color;Color de bajo detalle
+dialog.settings.rendering.zoom_level;Nivel de zoom
+dialog.settings.global.misc.mc_saves_dir;MC guarda dir
+dialog.settings.global.misc.print_debug;Imprimir mensajes de depuración
+dialog.settings.global.misc.show_log_file;Mostrar archivo de registro
+dialog.settings.reset;Resetear
+dialog.settings.set_default;Establecer como predeterminado
+dialog.settings.tab_global;Global
+dialog.settings.tab_processing;Procesando
+dialog.settings.tab_rendering;Representación
+dialog.settings.tab_world;Mundo
+dialog.settings.global.misc;Misc
+dialog.settings.processing.files;Archivos
+dialog.settings.rendering.smooth;Liso
+dialog.settings.global.selection;Selección
+dialog.settings.world.paths;Caminos
+dialog.settings.world.paths.poi;PDI
+dialog.settings.world.paths.entities;Entidades
+dialog.settings.rendering.layers.render_height;Altura de renderizado
+dialog.settings.rendering.layers.render_layer_only;Solo capa de renderizado
+dialog.settings.rendering.layers;Capas
+dialog.settings.rendering.structure_icons;Iconos de estructuras
+dialog.settings.rendering.structure_icon_size;Tamaño del icono
+dialog.settings.rendering.structure_icon_border_size;Tamaño del borde
+dialog.settings.rendering.layers.render_caves;Cuevas de render
+dialog.goto.title;Ir a coordenadas
+dialog.confirmation.question;¿Está seguro?
+dialog.defragment_regions_confirmation.title;Desfragmentar regiones
+dialog.defragment_regions_confirmation.header_short;Estás a punto de desfragmentar un número desconocido de regiones.
+dialog.defragment_regions_confirmation.header_verbose;Estás a punto de desfragmentar %d regiones.
+dialog.delete_chunks_confirmation.title;Borrar chunks
+dialog.delete_chunks_confirmation.header_short;Está a punto de borrar un número desconocido de Chunks de este mundo.
+dialog.delete_chunks_confirmation.header_verbose;Se borrarán %d chunks de este mundo.
+dialog.image_export_confirmation.title;Exportar imagen
+dialog.image_export_confirmation.header_short;Estás a punto de crear una imagen de proporciones desconocidas.
+dialog.image_export_confirmation.header_verbose;Estás a punto de crear una imagen con las dimensiones %dx%d.
+dialog.import_chunks_confirmation.title;Importar chunks
+dialog.import_chunks_confirmation.header;Está a punto de importar un número desconocido de Chunks a este mundo.
+dialog.import_chunks_confirmation.options;Opciones
+dialog.import_chunks_confirmation.options.offset;Desplazamiento
+dialog.import_chunks_confirmation.options.overwrite;Sobrescribir chunks existentes
+dialog.import_chunks_confirmation.options.selection_only;Aplicar solo en la selección.
+dialog.import_chunks_confirmation.options.y_offset;Desplazamiento Y
+dialog.import_chunks_confirmation.options.sections;Secciones
+dialog.import_chunks_confirmation.warning;Advertencia: La importación de Chunks desplazados en el espacio no actualizará las coordenadas de los bloques de comandos.
+dialog.export_chunks_confirmation.title;Exportar chunks
+dialog.export_chunks_confirmation.header_short;Está a punto de exportar un número desconocido de Chunks de este mundo.
+dialog.export_chunks_confirmation.header_verbose;Se exportarán %d chunks de este mundo.
+dialog.import_selection.title;Importar una selección de .csv
+dialog.import_selection.header;Este mundo ya tiene una selección.\n¿Cómo se debe importar la nueva selección?
+dialog.import_selection.overwrite;Sobrescribir
+dialog.import_selection.merge;Añadir
+dialog.import_selection.subtract;Restar
+dialog.filter_chunks.title;Filtrar chunks
+dialog.filter_chunks.filter.add.tooltip;Agregar una nueva condición bajo esta.
+dialog.filter_chunks.filter.delete.tooltip;Borrar esta condición.
+dialog.filter_chunks.filter.type.tooltip;El tipo de esta condición.
+dialog.filter_chunks.filter.operator.tooltip;Operador para vincular múltiples condiciones.
+dialog.filter_chunks.filter.comparator.tooltip;Comparador.
+dialog.filter_chunks.select;Selección
+dialog.filter_chunks.select.tooltip;Crea una selección con los chunks afectados.
+dialog.filter_chunks.export;Exportar
+dialog.filter_chunks.export.tooltip;Exporta todos los chunks afectados a una nueva carpeta.
+dialog.filter_chunks.delete;Borrar
+dialog.filter_chunks.delete.tooltip;Elimina todos los chunks afectados del mundo actual.
+dialog.filter_chunks.selection_only;Aplicar solo a la selección.
+dialog.filter_chunks.add_selection;Añadir selección
+dialog.filter_chunks.subtract_selection;Restar selección
+dialog.filter_chunks.selection_radius;Radio de selección
+dialog.filter_chunks.tab_query;Consulta
+dialog.filter_chunks.tab_script;Guion
+dialog.edit_overlays.title;Editar superposiciones
+dialog.edit_overlays.overlay_active.tooltip;Activo
+dialog.edit_overlays.delete.tooltip;Borrar
+dialog.edit_overlays.tab_presets;Superposiciones
+dialog.edit_overlays.tab_script;Script
+dialog.edit_overlays.create_overlay;Crear Superposición
+dialog.change_nbt.title;Cambiar NBT
+dialog.change_nbt.change;Cambiar
+dialog.change_nbt.change.tooltip;Cambia el valor solo si su clave existe.
+dialog.change_nbt.force;Forzar
+dialog.change_nbt.force.tooltip;Crea la tag si no existe.
+dialog.change_nbt.selection_only;Aplicar solo a selección
+dialog.change_nbt.selection_only.tooltip;Si este filtro solo se aplica a la selección actual.
+dialog.change_nbt_confirmation.title;Cambiar NBT
+dialog.change_nbt_confirmation.header_short;Se cambiarán datos en un número desconocido de chunks en este mundo.
+dialog.change_nbt.tab_query;Consulta
+dialog.change_nbt.tab_script;Guion
+dialog.edit_nbt.title;Editar chunk
+dialog.edit_nbt.placeholder.loading;cargando...
+dialog.edit_nbt.placeholder.no_chunk_data;no se encontraron datos de chunk
+dialog.edit_nbt.placeholder.no_region_file;el archivo de región no existe
+dialog.edit_array.index;Índice
+dialog.edit_array.value;Valor
+dialog.about.title;Acerca de
+dialog.about.header;Acerca de MCA Selector
+dialog.about.version;Versión:
+dialog.about.version.unknown;desconocido
+dialog.about.version.check;analizar
+dialog.about.version.checking;analizando...
+dialog.about.version.up_to_date;Actualizar
+dialog.about.version.error;Error
+dialog.about.license;Licencia:
+dialog.about.copyright;Copyright:
+dialog.about.source;Fuente:
+dialog.progress.no_files;no hay archivos
+dialog.progress.running;ejecutando...
+dialog.progress.cancelling;cancelando...
+dialog.progress.collecting_data;recopilando datos...
+dialog.progress.done;Hecho.
+dialog.progress.scanning_files;Archivos escaneados...
+dialog.progress.title.loading_world;Cargando mundo...
+dialog.progress.title.defragmenting_regions;Desfragmentando regiones...
+dialog.progress.title.deleting_selection;Borrando selección...
+dialog.progress.title.creating_image;Creando imagen...
+dialog.progress.title.saving_image;Guardando imagen...
+dialog.progress.title.exporting_selection;Exportando selección...
+dialog.progress.title.importing_chunks;Importando chunks...
+dialog.progress.title.deleting_filtered_chunks;Borrando chunks filtrados...
+dialog.progress.title.exporting_filtered_chunks;Exportando chunks filtrados...
+dialog.progress.title.selecting_filtered_chunks;Seleccionando chunks filtrados...
+dialog.progress.title.changing_nbt_data;Cambiando datos NBT...
+dialog.progress.title.saving_chunk;Guardando fragmento en archivo...
+dialog.progress.title.running_before;Ejecutar "before()"...
+dialog.progress.title.running_after;Ejecutar "after()"...
+dialog.progress.title.summing;Contar...
+dialog.error.button.copy_to_clipboard;Copiar al portapapeles
+dialog.error.title;Error
+dialog.error.header;Ocurrió un error
+dialog.error.copied_to_clipboard;¡Copiado al portapapeles!
+dialog.unsaved_selection.title;Selección no guardada
+dialog.unsaved_selection.header;Hay una selección sin guardar.
+dialog.unsaved_script.title;Script no guardado
+dialog.unsaved_script.header;Hay un script no guardado.
+dialog.request_number.title.array_length;Longitud de la matriz
+dialog.request_number.title.enter_number;Valor
+button.cancel;Cancelar
+button.ok;OK

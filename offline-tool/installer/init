@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+
+# pads a string up to the given length
+# Pad <string> <char> <length>
+Pad() {
+  local result=''
+  local start_len=${#1}
+  local target_len=${3:-0}
+  for (( i = start_len; i < target_len; i+=2 ));
+  do
+    result="$result$2"
+  done
+  echo "$result$1"
+}
+
+# appends the text of the given license file to the given string
+# AppendLicense <file> <string>
+AppendLicense() {
+  local content=$(<$1)
+  # remove .license.txt from file name
+  local baseName=$(basename $1 .txt)
+  local licenseName=$(echo "$baseName" | tr '[:lower:]' '[:upper:]')
+  echo "$2
+
+
+############################################################
+#$(Pad 'License for '$licenseName ' ' 58)
+############################################################
+
+$content"
+}
+
+# BuildLicense <project root> <output file>
+BuildLicense() {
+  local finalLicense=$(<"$1/LICENSE")
+  finalLicense="$finalLicense
+
+
+############################################################
+############################################################
+##
+##                   3RD PARTY LICENSES
+##
+############################################################
+############################################################"
+
+  # add dependency licenses
+  local files="$1/build/resources/main/licenses/*"
+  for f in $files
+  do
+    finalLicense=$(AppendLicense "$f" "$finalLicense")
+  done
+
+  # add notosans licenses
+  finalLicense=$(AppendLicense "$1/build/resources/main/font/license/notosans.txt" "$finalLicense")
+  finalLicense=$(AppendLicense "$1/build/resources/main/font/license/notosansmono.txt" "$finalLicense")
+
+  echo "$finalLicense" > "$2"
+}
+
+BuildLicense $1 $2

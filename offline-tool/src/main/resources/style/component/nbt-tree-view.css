@@ -1,0 +1,45 @@
+* {
+    -color-tree-view-background: #46494b;
+    -color-tree-cell-selected: rgba(45, 48, 49, 0.5);
+    -color-tree-cell-line-color: #636769;
+    -color-treeview-cell-insert: #636769;
+}
+
+.nbt-tree-view {
+    -fx-background-color: -color-tree-view-background;
+}
+
+.nbt-tree-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: -color-text-light;
+}
+
+.nbt-tree-cell:selected {
+    -fx-background-color: -color-tree-cell-selected;
+}
+
+.nbt-tree-cell .expand-square {
+    -fx-border-color: -color-tree-cell-line-color;
+    -fx-border-width: 1.5;
+}
+
+.nbt-tree-cell Line {
+    -fx-stroke: -color-tree-cell-line-color;
+    -fx-stroke-width: 1.5;
+}
+
+.nbt-tree-cell .expand {
+    -fx-stroke: -color-text-light;
+    -fx-stroke-width: 1;
+}
+
+.nbt-tree-cell .text-field, .nbt-tree-cell .button {
+    -fx-padding: 0 0 0 2;
+    -fx-min-height: 21;
+    -fx-pref-height: 21;
+    -fx-max-height: 21;
+}
+
+.nbt-tree-view .drop-highlight {
+    -fx-fill: rgba(100, 100, 100, 1);
+}
