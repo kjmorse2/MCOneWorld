@@ -1,0 +1,41 @@
+{
+  "format": "mconeworld-manifest",
+  "schemaVersion": "0.9",
+  "archive": "a4c10000-0000-4000-8000-000000000001",
+  "created": 1767225600000,
+  "revision": 3,
+  "active": "5ea50000-0000-4000-8000-000000000002",
+  "seasons": [
+    {
+      "id": "5ea50000-0000-4000-8000-000000000001",
+      "name": "Genesis",
+      "created": 1767226600000,
+      "state": "archived",
+      "origins": [
+        {"dimension": "minecraft:overworld", "x": 0, "y": 64, "z": 0},
+        {"dimension": "minecraft:the_nether", "x": 0, "y": 64, "z": 0}
+      ],
+      "spawn": {"dimension": "minecraft:overworld", "x": 8, "y": 70, "z": -8}
+    },
+    {
+      "id": "5ea50000-0000-4000-8000-000000000002",
+      "name": "Second",
+      "created": 1767228400000,
+      "state": "active",
+      "origins": [
+        {"dimension": "minecraft:overworld", "x": 1048576, "y": 64, "z": -2097152}
+      ],
+      "spawn": {"dimension": "minecraft:overworld", "x": 1048600, "y": 72, "z": -2097100}
+    }
+  ],
+  "portals": [
+    {
+      "id": "90e70000-0000-4000-8000-000000000001",
+      "label": "Genesis hub",
+      "destination": {"dimension": "minecraft:overworld", "x": 16, "y": 70, "z": 16},
+      "created": 1767229000000
+    }
+  ],
+  "notes": "Imported from the 2025 test server",
+  "extensions": {"example:dashboard": {"pinned": true}}
+}

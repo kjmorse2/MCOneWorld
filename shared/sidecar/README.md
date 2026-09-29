@@ -15,7 +15,7 @@ It operates on a caller-supplied root and never rewrites anything on a read-only
 
 **Forbidden:** `shared:protocol`, `shared:test-fixtures` in production code, and every platform dependency.
 
-**Status:** manifest v1 (Prompt 04) and storage safety (Prompt 05) are implemented. Migrations come in Prompt 06, and chunk indexes in Prompts 08 and 09.
+**Status:** manifest v1 (Prompt 04), storage safety (Prompt 05), and the migration framework (Prompt 06) are implemented. Chunk indexes come in Prompts 08 and 09.
 
 Packages:
 
@@ -29,6 +29,7 @@ Packages:
   - fault-injection seam: `StorageFileSystem`, `JdkStorageFileSystem`, `CommitStage`
 
   The layout and protocol are in [`docs/formats/sidecar-storage-v1.md`](../../docs/formats/sidecar-storage-v1.md); the policy is in ADR 0004.
+- `sidecar.migration` (API): `MigrationPlanner`, `MigrationRunner`, `MigrationRegistry` (the built-in registry is empty), `ManifestMigration`, `MigrationStep`, `MigrationId`, `MigrationPlan`, `MigrationReport`, `StepReport`, `MigrationRecorder`, `VerifiedBackup`, `MigrationResult`, `MigrationException`, `MigrationIssueCodes`. The policy is in ADR 0005.
 - `sidecar.internal.json` (**internal, not API**): the strict JSON reader over jackson-core, and the canonical writer.
 
 jackson-core is an `implementation` dependency. Its types never appear in public signatures. Platform jars that shade it must relocate `tools.jackson.core`.

@@ -166,6 +166,25 @@ try (SidecarWriter w = store.openWriter(owner, clock, StaleLockPolicy.REFUSE)) {
 - Errors are `StorageException.code()`, from `StorageIssueCodes` (`sidecar.storage.*`, `sidecar.recovery.*`).
 - **Supported:** Linux local filesystems. Not NFS or SMB. Windows is untested.
 
+### `sidecar.migration`: explicit schema migrations (Prompt 06)
+
+The policy is in ADR 0005.
+
+```java
+MigrationPlanner planner = new MigrationPlanner(MigrationRegistry.builtIn(), ManifestLimits.DEFAULT);
+MigrationPlan plan = planner.plan(store, ManifestCodec.CURRENT);          // pure dry run; writes nothing
+VerifiedBackup backup = VerifiedBackup.verify(backupId, copyOutsideSidecar, max); // copy of the source manifest
+try (SidecarWriter w = store.openWriter(owner, clock, StaleLockPolicy.REFUSE)) {
+  MigrationResult r = new MigrationRunner(registry, limits).apply(w, plan, backup); // explicit; commits atomically
+}
+```
+
+- **Steps:** each is a pure `bytes → bytes` step moving exactly one version. Paths must be unique and contiguous, and downgrades happen only through explicit downgrade steps.
+- **Applying** re-checks the backup, the source checksum, and determinism. It then commits through storage with a persisted report at `reports/migrations/<runId>.json`.
+- **Never implicit:** a legacy manifest makes reads fail with `manifest.version.unsupported`, and ordinary writes refuse.
+- **Loss is refused** (`UNSUPPORTED_DATA`), never hidden in warnings.
+- `MigrationRegistry.builtIn()` is **empty**: 1.0 is the first released schema. v0.9 is a synthetic, test-only fixture.
+
 Test support in `shared:test-fixtures`:
 
 - `ManifestFixtures.fullDocument()`: every v1 member
