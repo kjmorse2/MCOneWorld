@@ -21,4 +21,11 @@ Artifact: `io.github.kjmorse2.mconeworld:mconeworld-shared-domain` · Package: `
 
 `verifySharedDependencies` and `verifySharedBytecode` enforce these rules.
 
-**Status:** scaffold only (Prompt 01). The domain model arrives in Prompts 02, 03, and 07.
+**Status:** identifiers and coordinates are done (Prompt 02). Seasons, provenance, and validation come in Prompt 03, and operations in Prompt 07.
+
+Packages:
+
+- `domain`: `SeasonId`, `OperationId`, `DimensionKey`, `DomainErrorCode`, `InvalidDomainValueException`
+- `domain.coordinate`: `BlockPosition`, `ChunkPosition`, `RegionPosition`, `DimensionOrigin`, `SeasonLocalPosition`, `OverworldNetherScaling`, `OriginAlignment`, `WorldBounds`, `CoordinateLimits`
+
+See [`../README.md`](../README.md#public-api) for the API summary.

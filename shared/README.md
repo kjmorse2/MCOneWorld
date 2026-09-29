@@ -25,7 +25,32 @@ Group ID: `io.github.kjmorse2.mconeworld` (ADR 0001).
 
 ## Public API
 
-> Scaffold stage (Prompt 01): no public types yet. Each later prompt adds its API summary to this section.
+Each prompt adds its summary here. Javadoc on each type is the authoritative contract.
+
+### `domain`: identifiers (Prompt 02)
+
+| Type | Purpose | Key rules |
+|---|---|---|
+| `SeasonId`, `OperationId` | Stable UUID identities, independent of display names | `parse(String)` accepts only the canonical lowercase 36-character form. The nil UUID is rejected. There is no random factory: callers supply a UUID. Ordering is by text. |
+| `DimensionKey` | Namespaced dimension id (`minecraft:overworld`, `mymod:x/y`) | Minecraft `Identifier` characters, but stricter: the namespace is mandatory, and empty, `.` and `..` segments are rejected. At most 256 characters. Constants `OVERWORLD`, `THE_NETHER`, `THE_END`. |
+| `InvalidDomainValueException` | The one documented failure of every factory and constructor | Branch on `code()` (a `DomainErrorCode`), never on the message |
+| `DomainErrorCode` | Stable codes such as `domain.coordinate.out_of_range` | The code strings are a contract, pinned by `DomainErrorCodeTest` |
+
+### `domain.coordinate`: coordinates (Prompt 02)
+
+| Type | Purpose |
+|---|---|
+| `BlockPosition(dim, long x, int y, long z)` | Absolute block, which is authoritative. `.chunk()` |
+| `ChunkPosition(dim, int x, int z)` | `containing(block)` = `floorDiv(·, 16)`. `min/maxBlockX/Z`, `.region()`, `regionLocalX/Z` (0..31). Ordered by dimension, X, Z. |
+| `RegionPosition(dim, int x, int z)` | `containing(chunk)` = `floorDiv(·, 32)`, which is one `.mca` file. `min/maxChunkX/Z`. |
+| `DimensionOrigin(dim, long x, int y, long z)` | A season origin. `toLocal(block)`. Y is a reference height and is not transformed. |
+| `SeasonLocalPosition(origin, long x, int y, long z)` | Presentation-only local coordinates. It carries its origin, and `toAbsolute()` never fails. |
+| `OverworldNetherScaling` | Accepts only `minecraft:overworld` and `minecraft:the_nether`. Methods: `toNetherExact` (rejects non-multiples of 8), `toNetherFloor` (explicit floor), `toOverworld`, `pairedNetherOrigin`, `isPaired`. |
+| `OriginAlignment` | Reports `remainderX/Z` (floorMod) and `isAligned()`. It never rounds. `recommendedFor`: Overworld 128, everything else 16. |
+| `WorldBounds` | *World* limits, checked explicitly: `contains`, `containsChunkHorizontally`. `VANILLA_OVERWORLD`/`NETHER`/`END` and `vanilla(minY, height)` are verified against 26.2: horizontal `[-30000000, 29999999]`, Y at most `-2032..2031`. |
+| `CoordinateLimits` | *Representation* limits: block X/Z within ±2^35, which is exactly the range whose chunk fits in an `int`, so conversions are total. Region X/Z within ±2^26. |
+
+Every position requires a dimension. X/Z math is `long` with `Math.*Exact`. Nothing is clamped or rounded, except in methods named `…Floor`.
 
 ## Building
 

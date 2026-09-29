@@ -8,7 +8,8 @@ import org.junit.jupiter.api.Test;
 class DomainModuleSmokeTest {
 
   @Test
-  void rootPackageSatisfiesTheSharedContract() {
+  void everyPackageSatisfiesTheSharedContract() {
     ModuleContract.assertSharedPackageContract("io.github.kjmorse2.mconeworld.domain");
+    ModuleContract.assertSharedPackageContract("io.github.kjmorse2.mconeworld.domain.coordinate");
   }
 }
