@@ -29,14 +29,13 @@ Requirements:
 
 ## Updating dependencies
 
-Versions live only in `gradle/libs.versions.toml`. Builds use strict dependency locking and SHA-256 dependency verification. After changing a version:
+Versions live only in `gradle/libs.versions.toml`. Builds use **strict** dependency locking and SHA-256 dependency verification, so an unlocked or unverified artifact fails the build. After changing a version, or adding a dependency (including project-to-project dependencies, which change transitive classpaths), run:
 
 ```bash
-./gradlew --no-configuration-cache resolveAndLockAll --write-locks
-./gradlew --write-verification-metadata sha256 --no-configuration-cache resolveAndLockAll sharedCheck
+./scripts/refresh-dependency-state.sh
 ```
 
-Run the second command from a clean tree, with no `build/` or `.gradle/` directories in the repository or in `build-logic/`. Otherwise up-to-date tasks skip resolution and the metadata comes out incomplete. Review the diff of `gradle/verification-metadata.xml` before committing.
+The script regenerates every lockfile and `gradle/verification-metadata.xml` from a clean copy of the tree. A copy is required because up-to-date tasks skip resolution, which would silently produce incomplete metadata. Review the diff of the verification metadata before committing: each new checksum is a newly trusted artifact.
 
 ## For agents
 

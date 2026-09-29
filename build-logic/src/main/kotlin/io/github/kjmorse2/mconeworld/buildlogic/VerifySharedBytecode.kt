@@ -47,7 +47,9 @@ abstract class VerifySharedBytecode : DefaultTask() {
             ToolProvider.findFirst("jdeps").orElseThrow {
                 GradleException("jdeps is unavailable: run Gradle on a full JDK 25, not a JRE.")
             }
-        val args = mutableListOf("-verbose:package")
+        // Dependencies such as jackson-core are multi-release jars; analyse them as the Java 21
+        // release that shared modules target (ADR 0002).
+        val args = mutableListOf("-verbose:package", "--multi-release", "21")
         val cp = classpath.files.filter { it.exists() }
         if (cp.isNotEmpty()) {
             args += listOf("--class-path", cp.joinToString(java.io.File.pathSeparator))
@@ -58,7 +60,7 @@ abstract class VerifySharedBytecode : DefaultTask() {
         val err = StringWriter()
         val exit = jdeps.run(PrintWriter(out), PrintWriter(err), *args.toTypedArray())
         if (exit != 0) {
-            throw GradleException("jdeps failed with exit code $exit:\n$err")
+            throw GradleException("jdeps failed with exit code $exit:\n$err\n$out")
         }
 
         val edges = SharedArchitectureRules.parseJdepsPackageEdges(out.toString())
