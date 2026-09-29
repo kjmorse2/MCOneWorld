@@ -35,11 +35,52 @@ class ValueTypeContractTest {
           DimensionOrigin.class,
           SeasonLocalPosition.class,
           OriginAlignment.class,
-          WorldBounds.class);
+          WorldBounds.class,
+          ChunkRectangle.class,
+          io.github.kjmorse2.mconeworld.domain.BackupId.class,
+          io.github.kjmorse2.mconeworld.domain.PortalMarkerId.class,
+          io.github.kjmorse2.mconeworld.domain.ProtectedRegionId.class,
+          io.github.kjmorse2.mconeworld.domain.PlayerArchiveId.class,
+          io.github.kjmorse2.mconeworld.domain.PlayerId.class,
+          io.github.kjmorse2.mconeworld.domain.DisplayName.class,
+          io.github.kjmorse2.mconeworld.domain.Checksum.class,
+          io.github.kjmorse2.mconeworld.domain.validation.IssueCode.class,
+          io.github.kjmorse2.mconeworld.domain.validation.IssueLocation.class,
+          io.github.kjmorse2.mconeworld.domain.provenance.ProvenanceEvidence.class,
+          io.github.kjmorse2.mconeworld.domain.provenance.SeasonActivity.class,
+          io.github.kjmorse2.mconeworld.domain.provenance.FirstObservation.InSeason.class,
+          io.github.kjmorse2.mconeworld.domain.provenance.FirstObservation.Legacy.class,
+          io.github.kjmorse2.mconeworld.domain.provenance.ChunkEnvelope.Empty.class,
+          io.github.kjmorse2.mconeworld.domain.provenance.ChunkEnvelope.Bounded.class,
+          io.github.kjmorse2.mconeworld.domain.provenance.ProtectedRegion.class,
+          io.github.kjmorse2.mconeworld.domain.archive.PortalMarker.class,
+          io.github.kjmorse2.mconeworld.domain.archive.BackupRecord.class);
 
-  /** Component types known to be deeply immutable. */
+  /**
+   * Component types known to be deeply immutable. Records with collection components (SeasonRecord,
+   * ChunkProvenance, PlayerArchiveRecord, ArchiveState, ValidationResult) are covered by dedicated
+   * aliasing tests instead.
+   */
   static final Set<Class<?>> IMMUTABLE_COMPONENTS =
-      Set.of(String.class, UUID.class, DimensionKey.class, DimensionOrigin.class);
+      Set.of(
+          String.class,
+          UUID.class,
+          java.time.Instant.class,
+          DimensionKey.class,
+          DimensionOrigin.class,
+          BlockPosition.class,
+          ChunkRectangle.class,
+          io.github.kjmorse2.mconeworld.domain.SeasonId.class,
+          io.github.kjmorse2.mconeworld.domain.OperationId.class,
+          io.github.kjmorse2.mconeworld.domain.BackupId.class,
+          io.github.kjmorse2.mconeworld.domain.PortalMarkerId.class,
+          io.github.kjmorse2.mconeworld.domain.ProtectedRegionId.class,
+          io.github.kjmorse2.mconeworld.domain.DisplayName.class,
+          io.github.kjmorse2.mconeworld.domain.Checksum.class,
+          io.github.kjmorse2.mconeworld.domain.Checksum.Algorithm.class,
+          io.github.kjmorse2.mconeworld.domain.provenance.EvidenceSource.class,
+          io.github.kjmorse2.mconeworld.domain.provenance.Confidence.class,
+          io.github.kjmorse2.mconeworld.domain.provenance.ProvenanceEvidence.class);
 
   static List<Class<?>> valueTypes() {
     return VALUE_TYPES;

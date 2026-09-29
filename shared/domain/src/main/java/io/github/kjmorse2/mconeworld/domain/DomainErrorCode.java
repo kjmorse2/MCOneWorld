@@ -27,7 +27,21 @@ public enum DomainErrorCode {
   /** An alignment check was requested with a non-positive alignment. */
   ALIGNMENT_INVALID("domain.alignment.invalid"),
   /** World bounds are inverted, empty, or outside representable or vanilla limits. */
-  BOUNDS_INVALID("domain.bounds.invalid");
+  BOUNDS_INVALID("domain.bounds.invalid"),
+  /** A display name is empty, too long, or contains disallowed characters. */
+  DISPLAY_NAME_INVALID("domain.display_name.invalid"),
+  /** A checksum is not {@code <algorithm>:<lowercase hex>} for a supported algorithm. */
+  CHECKSUM_MALFORMED("domain.checksum.malformed"),
+  /** A validation issue code does not follow the dotted lowercase grammar. */
+  ISSUE_CODE_MALFORMED("domain.issue_code.malformed"),
+  /** A season lifecycle transition is not permitted (see {@code SeasonStatus}). */
+  SEASON_TRANSITION_ILLEGAL("domain.season.transition_illegal"),
+  /** An identifier is already used by another record of the same kind. */
+  DUPLICATE_ID("domain.id.duplicate"),
+  /** A referenced record (for example a season) does not exist. */
+  REFERENCE_NOT_FOUND("domain.reference.not_found"),
+  /** A scalar value is outside its documented domain (for example a negative size). */
+  VALUE_INVALID("domain.value.invalid");
 
   private final String code;
 

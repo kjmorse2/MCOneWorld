@@ -52,6 +52,71 @@ Each prompt adds its summary here. Javadoc on each type is the authoritative con
 
 Every position requires a dimension. X/Z math is `long` with `Math.*Exact`. Nothing is clamped or rounded, except in methods named `…Floor`.
 
+`ChunkRectangle(dim, minX, minZ, maxX, maxZ)` is inclusive, non-empty geometry: `contains`, `intersects`, `including`, `union`, and `width`/`heightChunks` as `long`.
+
+### More `domain` value types (Prompt 03)
+
+| Type | Rules |
+|---|---|
+| `BackupId`, `PortalMarkerId`, `ProtectedRegionId`, `PlayerArchiveId` | Same canonical-UUID rules as `SeasonId` |
+| `PlayerId` | The player's **existing** account UUID. There is no generating factory, because identities are never fabricated. |
+| `DisplayName` | Up to 64 code points. No leading or trailing whitespace, controls, bidi overrides, or unpaired surrogates. **Not an identifier; need not be unique.** |
+| `Checksum` | `sha256:<64 lowercase hex>`. `parse`, `ofDigest`, `Algorithm.SHA_256.jcaName()`. |
+
+### `domain.validation` (Prompt 03)
+
+- `ValidationIssue`:
+  - stable `IssueCode` in dotted lowercase, e.g. `archive.active_season.not_found`
+  - `Severity`: `ERROR`, `WARNING` or `INFO`
+  - `IssueLocation`, a JSONPath-like location such as `$.seasons[<id>].origins[minecraft:the_end]`, built with `root().field().key().index()`
+  - a message and an optional remediation
+  - an optional `cause`, which is diagnostic-only: excluded from equality, never serialized
+- `ValidationIssue.fromException(location, InvalidDomainValueException)` reuses the exception's `DomainErrorCode` text as the issue code.
+- `ValidationResult`:
+  - issues are sorted deterministically (severity, location, code, message)
+  - `isValid()` is true when there are no errors; warnings allowed
+  - `requireValid()` throws `ValidationException` carrying the result
+  - also `withSeverity`, `has`, `plus`
+
+### `domain.season` (Prompt 03)
+
+- `SeasonStatus` lifecycle:
+  - `PLANNED → ACTIVE → ARCHIVED`
+  - `PLANNED → CANCELLED`
+  - `ARCHIVED` and `CANCELLED` are terminal
+  - check with `canTransitionTo`
+- `SeasonRecord(id, name, createdAt, status, SortedMap origins, spawn)`:
+  - origins are an unmodifiable copy keyed by their own dimension, and any dimension may be absent
+  - clearly named construction: `SeasonRecord.planned(...)`, `withOrigin`, `withoutOrigin`, `renamed` (keeps the id), `transitionTo`
+
+### `domain.provenance` (Prompt 03): evidence, not ownership
+
+- `ChunkProvenance(chunk, firstObservation, activity, protection)`:
+  - `firstObservation` is sealed: `FirstObservation.InSeason(season, at, evidence)` or `FirstObservation.Legacy(at, evidence)`, where the season is unknown and never guessed
+  - `activity` holds at most one `SeasonActivity` per season, sorted by season id; `withActivity` keeps the later observation
+  - `protection` is a `ChunkProtection` (`NONE`/`PROTECTED`), independent of provenance
+- `ProvenanceEvidence(EvidenceSource, Confidence)`. Destructive tooling must not act on `LOW` or `MEDIUM` confidence alone.
+- `ChunkEnvelope` is sealed (`Empty` or `Bounded`). It is a **derived summary with no `contains`**; `boundsMayInclude` does not mean membership. `ChunkEnvelope.of(dim, iterator)` streams in constant memory.
+- `ProtectedRegion(id, name, ChunkRectangle area, createdAt)`: the area is authoritative, checked with `protects(chunk)`.
+
+### `domain.archive` (Prompt 03)
+
+- `ArchiveState(seasons, @Nullable activeSeasonId, protectedRegions, portalMarkers, backups, playerArchives)`:
+  - the manifest-independent aggregate, with unmodifiable lists in append order
+  - the constructor enforces structure only
+  - `validate()` reports every cross-record problem, with codes in `ArchiveIssueCodes`:
+    - active-season missing, not found, not active, or multiple
+    - duplicate ids
+    - unknown season references
+    - origin misaligned or Nether unpaired (warnings)
+  - transitions refuse invalid input states and yield valid states: `appendSeason`, `activate` (archives the previous active season), `archiveActiveSeason`, `cancelSeason`, `renameSeason`, `with*`
+  - the active season is **only** `activeSeasonId`, never inferred
+- `PortalMarker(id, label, recordedDestination, @Nullable destinationSeason, createdAt)`: data, not permission. The destination is unverified, and callers must validate safety and authorization at travel time.
+- `BackupRecord(id, createdAt, checksum, sizeBytes ≥ 0, @Nullable operation, @Nullable activeSeason)`.
+- `PlayerArchiveRecord(id, PlayerId, season, archivedAt, non-empty categories, physicalContainers)`: metadata only; item serialization is not designed yet.
+
+Test support in `shared:test-fixtures`: `DomainFixtures` provides deterministic ids (`seasonId(n)`, …), `instant(seconds)`, `overworld(x, y, z)`, and `season(n)…build()`.
+
 ## Building
 
 ```bash

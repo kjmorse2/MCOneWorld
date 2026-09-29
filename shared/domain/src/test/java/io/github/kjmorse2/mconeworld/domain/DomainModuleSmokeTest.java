@@ -10,6 +10,9 @@ class DomainModuleSmokeTest {
   @Test
   void everyPackageSatisfiesTheSharedContract() {
     ModuleContract.assertSharedPackageContract("io.github.kjmorse2.mconeworld.domain");
-    ModuleContract.assertSharedPackageContract("io.github.kjmorse2.mconeworld.domain.coordinate");
+    for (String sub :
+        new String[] {"coordinate", "validation", "season", "provenance", "archive"}) {
+      ModuleContract.assertSharedPackageContract("io.github.kjmorse2.mconeworld.domain." + sub);
+    }
   }
 }

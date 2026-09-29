@@ -21,11 +21,16 @@ Artifact: `io.github.kjmorse2.mconeworld:mconeworld-shared-domain` · Package: `
 
 `verifySharedDependencies` and `verifySharedBytecode` enforce these rules.
 
-**Status:** identifiers and coordinates are done (Prompt 02). Seasons, provenance, and validation come in Prompt 03, and operations in Prompt 07.
+**Status:** identifiers and coordinates are done (Prompt 02), as are seasons, provenance, archive state, and validation (Prompt 03). Operations come in Prompt 07.
 
 Packages:
 
 - `domain`: `SeasonId`, `OperationId`, `DimensionKey`, `DomainErrorCode`, `InvalidDomainValueException`
-- `domain.coordinate`: `BlockPosition`, `ChunkPosition`, `RegionPosition`, `DimensionOrigin`, `SeasonLocalPosition`, `OverworldNetherScaling`, `OriginAlignment`, `WorldBounds`, `CoordinateLimits`
+- `domain.coordinate`: `BlockPosition`, `ChunkPosition`, `RegionPosition`, `ChunkRectangle`, `DimensionOrigin`, `SeasonLocalPosition`, `OverworldNetherScaling`, `OriginAlignment`, `WorldBounds`, `CoordinateLimits`
+- `domain` (Prompt 03 additions): `BackupId`, `PortalMarkerId`, `ProtectedRegionId`, `PlayerArchiveId`, `PlayerId`, `DisplayName`, `Checksum`
+- `domain.validation`: `ValidationIssue`, `ValidationResult`, `IssueCode`, `IssueLocation`, `Severity`, `ValidationException`
+- `domain.season`: `SeasonRecord`, `SeasonStatus`
+- `domain.provenance`: `ChunkProvenance`, `FirstObservation` (`InSeason` or `Legacy`), `SeasonActivity`, `ProvenanceEvidence`, `EvidenceSource`, `Confidence`, `ChunkProtection`, `ChunkEnvelope`, `ProtectedRegion`
+- `domain.archive`: `ArchiveState`, `ArchiveIssueCodes`, `PortalMarker`, `BackupRecord`, `PlayerArchiveRecord`, `ArchiveCategory`
 
 See [`../README.md`](../README.md#public-api) for the API summary.

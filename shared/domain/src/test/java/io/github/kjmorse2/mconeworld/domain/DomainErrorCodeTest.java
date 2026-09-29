@@ -27,6 +27,13 @@ class DomainErrorCodeTest {
     expected.put(DomainErrorCode.SCALING_NOT_EXACT, "domain.scaling.not_exact");
     expected.put(DomainErrorCode.ALIGNMENT_INVALID, "domain.alignment.invalid");
     expected.put(DomainErrorCode.BOUNDS_INVALID, "domain.bounds.invalid");
+    expected.put(DomainErrorCode.DISPLAY_NAME_INVALID, "domain.display_name.invalid");
+    expected.put(DomainErrorCode.CHECKSUM_MALFORMED, "domain.checksum.malformed");
+    expected.put(DomainErrorCode.ISSUE_CODE_MALFORMED, "domain.issue_code.malformed");
+    expected.put(DomainErrorCode.SEASON_TRANSITION_ILLEGAL, "domain.season.transition_illegal");
+    expected.put(DomainErrorCode.DUPLICATE_ID, "domain.id.duplicate");
+    expected.put(DomainErrorCode.REFERENCE_NOT_FOUND, "domain.reference.not_found");
+    expected.put(DomainErrorCode.VALUE_INVALID, "domain.value.invalid");
 
     assertThat(DomainErrorCode.values()).containsExactlyInAnyOrderElementsOf(expected.keySet());
     expected.forEach((code, text) -> assertThat(code.code()).isEqualTo(text));

@@ -16,7 +16,14 @@ class IdentifierTest {
   private static final String CANONICAL = "3f2504e0-4f89-41d3-9a0c-0305e82c3301";
 
   static List<Function<String, Object>> parsers() {
-    return List.of(SeasonId::parse, OperationId::parse);
+    return List.of(
+        SeasonId::parse,
+        OperationId::parse,
+        BackupId::parse,
+        PortalMarkerId::parse,
+        ProtectedRegionId::parse,
+        PlayerArchiveId::parse,
+        PlayerId::parse);
   }
 
   @ParameterizedTest
@@ -61,6 +68,7 @@ class IdentifierTest {
     UUID nil = new UUID(0, 0);
     assertThatThrownBy(() -> SeasonId.of(nil)).isInstanceOf(InvalidDomainValueException.class);
     assertThatThrownBy(() -> OperationId.of(nil)).isInstanceOf(InvalidDomainValueException.class);
+    assertThatThrownBy(() -> PlayerId.of(nil)).isInstanceOf(InvalidDomainValueException.class);
   }
 
   @org.junit.jupiter.api.Test
