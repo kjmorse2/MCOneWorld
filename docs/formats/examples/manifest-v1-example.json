@@ -1,0 +1,177 @@
+{
+  "activeSeason": "5ea50000-0000-4000-8000-000000000002",
+  "archiveId": "a4c10000-0000-4000-8000-000000000001",
+  "backups": [
+    {
+      "activeSeason": "5ea50000-0000-4000-8000-000000000001",
+      "checksum": "sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "createdAt": "2026-01-01T00:40:00Z",
+      "id": "bacc0000-0000-4000-8000-000000000001",
+      "operation": "0be40000-0000-4000-8000-000000000001",
+      "path": "backups/2026-01-01-genesis/world.tar",
+      "sizeBytes": 123456789
+    }
+  ],
+  "createdAt": "2026-01-01T00:00:00Z",
+  "features": {
+    "mconeworld:global_strongholds": {
+      "adoptedAt": "2026-01-01T00:33:20Z",
+      "configurationVersion": "1"
+    }
+  },
+  "files": [
+    {
+      "checksum": "sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "dimension": "minecraft:overworld",
+      "path": "indexes/overworld.idx",
+      "role": "chunk-index",
+      "sizeBytes": 65536
+    },
+    {
+      "checksum": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "dimension": "minecraft:the_nether",
+      "path": "indexes/the_nether.idx",
+      "role": "chunk-index",
+      "sizeBytes": 4096
+    },
+    {
+      "checksum": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "dimension": null,
+      "path": "reports/import-scan.json",
+      "role": "report",
+      "sizeBytes": 512
+    }
+  ],
+  "format": "mconeworld-manifest",
+  "playerArchives": [
+    {
+      "archivedAt": "2026-01-01T00:41:40Z",
+      "categories": [
+        "INVENTORY",
+        "ENDER_CHEST"
+      ],
+      "id": "a4c40000-0000-4000-8000-000000000001",
+      "physicalContainers": [
+        {
+          "dimension": "minecraft:overworld",
+          "x": 10,
+          "y": 70,
+          "z": -10
+        },
+        {
+          "dimension": "minecraft:overworld",
+          "x": 11,
+          "y": 70,
+          "z": -10
+        }
+      ],
+      "player": "91a70000-0000-4000-8000-000000000001",
+      "season": "5ea50000-0000-4000-8000-000000000001"
+    }
+  ],
+  "portalMarkers": [
+    {
+      "createdAt": "2026-01-01T00:51:40Z",
+      "destination": {
+        "dimension": "minecraft:overworld",
+        "x": 16,
+        "y": 70,
+        "z": 16
+      },
+      "destinationSeason": "5ea50000-0000-4000-8000-000000000001",
+      "id": "90e70000-0000-4000-8000-000000000001",
+      "label": "Genesis hub"
+    },
+    {
+      "createdAt": "2026-01-01T00:53:20Z",
+      "destination": {
+        "dimension": "minecraft:the_end",
+        "x": 100,
+        "y": 60,
+        "z": 0
+      },
+      "destinationSeason": null,
+      "id": "90e70000-0000-4000-8000-000000000002",
+      "label": "End gateway"
+    }
+  ],
+  "protectedRegions": [
+    {
+      "area": {
+        "dimension": "minecraft:overworld",
+        "maxX": 7,
+        "maxZ": 7,
+        "minX": -8,
+        "minZ": -8
+      },
+      "createdAt": "2026-01-01T00:50:00Z",
+      "id": "9e0e0000-0000-4000-8000-000000000001",
+      "name": "Genesis spawn town"
+    }
+  ],
+  "revision": 42,
+  "schemaVersion": "1.0",
+  "seasons": [
+    {
+      "createdAt": "2026-01-01T00:16:40Z",
+      "id": "5ea50000-0000-4000-8000-000000000001",
+      "name": "Genesis",
+      "origins": {
+        "minecraft:overworld": {
+          "x": 0,
+          "y": 64,
+          "z": 0
+        },
+        "minecraft:the_nether": {
+          "x": 0,
+          "y": 64,
+          "z": 0
+        }
+      },
+      "spawn": {
+        "dimension": "minecraft:overworld",
+        "x": 8,
+        "y": 70,
+        "z": -8
+      },
+      "status": "ARCHIVED"
+    },
+    {
+      "createdAt": "2026-01-01T00:33:20Z",
+      "id": "5ea50000-0000-4000-8000-000000000002",
+      "name": "Frühling 🌲",
+      "origins": {
+        "minecraft:overworld": {
+          "x": 1048576,
+          "y": 64,
+          "z": -2097152
+        },
+        "minecraft:the_nether": {
+          "x": 131072,
+          "y": 64,
+          "z": -262144
+        }
+      },
+      "spawn": {
+        "dimension": "minecraft:overworld",
+        "x": 1048600,
+        "y": 72,
+        "z": -2097100
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "createdAt": "2026-01-01T00:50:00Z",
+      "id": "5ea50000-0000-4000-8000-000000000003",
+      "name": "Next",
+      "origins": {},
+      "spawn": {
+        "dimension": "minecraft:overworld",
+        "x": 3145728,
+        "y": 64,
+        "z": 0
+      },
+      "status": "PLANNED"
+    }
+  ]
+}

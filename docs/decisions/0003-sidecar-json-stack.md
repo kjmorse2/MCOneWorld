@@ -64,6 +64,17 @@ This is a *persistent-format-adjacent* decision. The library itself is replaceab
 
 4. **Duplicate keys are rejected** as corruption, not resolved by last-wins.
 
+## Implementation amendments (Prompt 04, 2026-09-28)
+
+1. **The writer is in-house (`CanonicalJsonWriter`), not `JsonGenerator`.** Jackson's pretty-printer defaults (separators, indentation) are library behaviour that could change between versions. An upgrade must never change canonical bytes, and therefore checksums. The writer is about 100 lines, and golden fixtures pin its output. jackson-core remains the parser.
+2. **Readers accept any conformant whitespace, including CRLF.** Earlier drafts proposed rejecting CRLF, but hand edits on Windows are legitimate. A reader reports `canonical=false`, and never rewrites. A BOM is still rejected.
+3. **Duplicate keys, unpaired surrogates, and element-count limits are checked by our own tree builder.** They carry precise codes and locations, independent of Jackson's messages. Jackson's own `StreamReadConstraints` are configured one unit looser, as a backstop. Every `JsonReadFeature.ALLOW_*` leniency is disabled explicitly, including any added in later versions.
+4. **UTF-8 is validated up front with the JDK's strict decoder.** It rejects overlong forms and encoded surrogates before parsing.
+5. **Null policy:** optional values are always present as JSON `null`; an absent member is an error. This gives one textual form per value.
+6. **Timestamps** use the shortest exact ISO-8601 UTC form (`ISO_INSTANT`), with years 0000–9999. Readers require the `Z` suffix.
+
+Normative details are in [`docs/formats/manifest-v1.md`](../formats/manifest-v1.md).
+
 ## Alternatives
 
 - **Gson.** Acceptable fallback, and the offline tool already depends on it. Rejected as the primary choice for three reasons: weaker built-in input limits, silent duplicate-key handling in tree mode, and version conflicts with the Gson that Paper and Minecraft bundle.

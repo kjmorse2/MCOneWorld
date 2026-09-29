@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 package io.github.kjmorse2.mconeworld.fixtures;
 
+import io.github.kjmorse2.mconeworld.domain.ArchiveId;
 import io.github.kjmorse2.mconeworld.domain.BackupId;
 import io.github.kjmorse2.mconeworld.domain.DimensionKey;
 import io.github.kjmorse2.mconeworld.domain.DisplayName;
@@ -38,6 +39,10 @@ public final class DomainFixtures {
   /** {@code EPOCH + seconds}. */
   public static Instant instant(long seconds) {
     return EPOCH.plusSeconds(seconds);
+  }
+
+  public static ArchiveId archiveId(int n) {
+    return ArchiveId.of(uuid(0xa4c10000L, n));
   }
 
   public static SeasonId seasonId(int n) {

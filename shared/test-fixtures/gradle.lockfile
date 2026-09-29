@@ -49,4 +49,6 @@ org.ow2.asm:asm-commons:9.10.1=jacocoAnt
 org.ow2.asm:asm-tree:9.10.1=jacocoAnt
 org.ow2.asm:asm:9.10.1=jacocoAnt
 org.pcollections:pcollections:4.0.1=annotationProcessor,testAnnotationProcessor
+tools.jackson.core:jackson-core:3.2.3=runtimeClasspath,testRuntimeClasspath
+tools.jackson:jackson-bom:3.2.3=runtimeClasspath,testRuntimeClasspath
 empty=

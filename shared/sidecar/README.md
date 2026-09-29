@@ -15,4 +15,12 @@ It operates on a caller-supplied root and never rewrites anything on a read-only
 
 **Forbidden:** `shared:protocol`, `shared:test-fixtures` in production code, and every platform dependency.
 
-**Status:** scaffold only (Prompt 01). Content arrives in Prompts 04 to 06, 08, and 09.
+**Status:** manifest v1 is implemented (Prompt 04). Storage safety comes in Prompt 05, migrations in Prompt 06, and chunk indexes in Prompts 08 and 09.
+
+Packages:
+
+- `sidecar.manifest` (API): `ManifestCodec`, `ManifestDocument`, `DecodedManifest`, `ManifestException`, `ManifestProblemKind`, `ManifestIssueCodes`, `ManifestLimits`, `SchemaVersion`, `FileReference`, `FeatureKey`, `FeatureRecord`, `PreservedMembers`, `ManifestFiles`. The format is [`docs/formats/manifest-v1.md`](../../docs/formats/manifest-v1.md).
+- `sidecar.storage` (API): `SidecarPath`, `UnsafeSidecarPathException`.
+- `sidecar.internal.json` (**internal, not API**): the strict JSON reader over jackson-core, and the canonical writer.
+
+jackson-core is an `implementation` dependency. Its types never appear in public signatures. Platform jars that shade it must relocate `tools.jackson.core`.

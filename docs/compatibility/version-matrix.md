@@ -42,12 +42,12 @@ Observed on 2026-09-27 from primary sources (see "Evidence" below). Re-verify be
 
 ## 3. Proposed shared-module library pins
 
-Pinned in `gradle/libs.versions.toml` as of Prompt 01, except the JSON library (added in Prompt 04) and JMH (added in Prompt 08).
+Pinned in `gradle/libs.versions.toml`, except JMH, which is added in Prompt 08.
 
 | Purpose | Artifact | Version | License | Scope |
 |---|---|---|---|---|
-| JSON (preferred) | `tools.jackson.core:jackson-core` / `jackson-databind` | `3.2.3` | Apache-2.0 | `sidecar` implementation only |
-| JSON (alternative) | `com.google.code.gson:gson` | `2.14.0` | Apache-2.0 | `sidecar` implementation only |
+| JSON | `tools.jackson.core:jackson-core` (**no databind**) | `3.2.3`, pinned (Prompt 04) | Apache-2.0 | `sidecar` `implementation` only, never in the public API |
+| JSON (not used) | `com.google.code.gson:gson` | `2.14.0` | Apache-2.0 | rejected alternative (ADR 0003) |
 | Nullness annotations | `org.jspecify:jspecify` | `1.0.1` | Apache-2.0 | compile-only API annotations |
 | Unit tests | `org.junit:junit-bom` | **`5.14.4`**, pinned (not 6.1.3; see ADR 0002 amendment) | EPL-2.0 | test |
 | Assertions | `org.assertj:assertj-core` | `3.27.7` | Apache-2.0 | test (not `4.0.0-M1`, which is a milestone) |

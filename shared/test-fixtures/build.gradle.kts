@@ -2,4 +2,7 @@
 // project; verifySharedDependencies in each module enforces that.
 plugins { id("mconeworld.shared-module") }
 
-dependencies { api(project(":shared:domain")) }
+dependencies {
+    api(project(":shared:domain"))
+    api(project(":shared:sidecar"))
+}

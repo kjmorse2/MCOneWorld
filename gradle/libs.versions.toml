@@ -4,6 +4,7 @@
 
 [versions]
 jspecify = "1.0.1"
+jackson = "3.2.3"            # jackson-core streaming parser only (ADR 0003)
 junit = "5.14.4"            # 5.x line on purpose: jqwik 1.10.1 targets JUnit Platform 1.14.4 (ADR 0002)
 assertj = "3.27.7"
 jqwik = "1.10.1"
@@ -15,6 +16,7 @@ errorprone-plugin = "5.1.1"
 
 [libraries]
 jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
+jackson-core = { module = "tools.jackson.core:jackson-core", version.ref = "jackson" }
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }

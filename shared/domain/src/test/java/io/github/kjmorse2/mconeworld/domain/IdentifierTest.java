@@ -18,6 +18,7 @@ class IdentifierTest {
   static List<Function<String, Object>> parsers() {
     return List.of(
         SeasonId::parse,
+        ArchiveId::parse,
         OperationId::parse,
         BackupId::parse,
         PortalMarkerId::parse,

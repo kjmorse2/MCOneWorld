@@ -2,3 +2,6 @@
 /gradlew            text eol=lf
 /gradlew.bat        text eol=crlf
 /gradle/wrapper/*.jar binary
+# Golden fixtures and published format examples are byte-exact; never let Git rewrite line endings.
+/shared/test-fixtures/src/main/resources/**/*.json  binary
+/docs/formats/examples/*.json                       binary

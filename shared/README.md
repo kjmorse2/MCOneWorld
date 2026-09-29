@@ -115,7 +115,37 @@ Every position requires a dimension. X/Z math is `long` with `Math.*Exact`. Noth
 - `BackupRecord(id, createdAt, checksum, sizeBytes ≥ 0, @Nullable operation, @Nullable activeSeason)`.
 - `PlayerArchiveRecord(id, PlayerId, season, archivedAt, non-empty categories, physicalContainers)`: metadata only; item serialization is not designed yet.
 
-Test support in `shared:test-fixtures`: `DomainFixtures` provides deterministic ids (`seasonId(n)`, …), `instant(seconds)`, `overworld(x, y, z)`, and `season(n)…build()`.
+### `sidecar.manifest`: `manifest.json` v1 (Prompt 04)
+
+The normative spec is [`docs/formats/manifest-v1.md`](../docs/formats/manifest-v1.md).
+
+```java
+ManifestCodec codec = new ManifestCodec();                 // or new ManifestCodec(ManifestLimits)
+DecodedManifest d = codec.decode(bytes);                   // throws ManifestException (all issues, kinds())
+ManifestDocument doc = d.document();                       // d.warnings(), d.canonical()
+byte[] out = codec.encode(doc.withState(newState).nextRevision()); // refuses invalid documents
+DecodedManifest f = ManifestFiles.readOnly(path, codec);   // never modifies the file
+```
+
+- `ManifestDocument(schemaVersion, archiveId, createdAt, revision, ArchiveState state, backupPaths, files, features, preserved)`:
+  - builders: `create(archiveId, createdAt)`, `withState`, `withBackup(record, path)`, `withFile`, `withFeature`, `nextRevision`
+  - `validate()` runs `ArchiveState.validate()` plus the manifest rules
+- Errors are classified by `ManifestProblemKind`, in precedence order: `SYNTAX`, `LIMIT`, `UNSUPPORTED_VERSION`, `SCHEMA`, `REFERENTIAL`, `DOMAIN`.
+- Compatibility:
+  - major ≠ 1 fails closed
+  - 1.0 files are strict: unknown members are rejected
+  - 1.N files (N > 0) are accepted with a warning, and unknown members are preserved through read-modify-write
+  - namespaced `extensions` objects are always preserved
+- `FileReference(role, @Nullable dimension, SidecarPath path, Checksum, sizeBytes)`, `FeatureKey`, `FeatureRecord(adoptedAt, configurationVersion)`, `SchemaVersion`.
+- `sidecar.storage.SidecarPath`: the only path form ever stored. It is relative, lowercase, portable, and traversal-proof; failures raise `UnsafeSidecarPathException` (`sidecar.path.unsafe`).
+- `ArchiveId` (domain) is the stable archive identity.
+
+Test support in `shared:test-fixtures`:
+
+- `ManifestFixtures.fullDocument()`: every v1 member
+- `ManifestFixtures.GOLDEN_FULL_V1`: the golden bytes plus a `.meta` file with the format version and SHA-256
+
+`DomainFixtures` provides deterministic ids (`seasonId(n)`, …), `instant(seconds)`, `overworld(x, y, z)`, and `season(n)…build()`.
 
 ## Building
 
@@ -136,8 +166,7 @@ Requirements:
 
 - A new or changed dependency must be:
   - added to `gradle/libs.versions.toml`
-  - locked (`./gradlew --no-configuration-cache resolveAndLockAll --write-locks`)
-  - verified (`--write-verification-metadata sha256`, run from a clean copy of the tree)
+  - locked and verified by running `./scripts/refresh-dependency-state.sh`
 
   Strict locking and checksum verification reject anything else. See the root README.
 - Production code in `sidecar` or `protocol` may never reference the other, or `test-fixtures`.
