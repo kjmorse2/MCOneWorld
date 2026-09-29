@@ -1,0 +1,28 @@
+# Single source of truth for every external version used by the root build and build-logic.
+# Exact versions only (root AGENTS.md §5). Changing a version requires regenerating lockfiles and
+# gradle/verification-metadata.xml; see README.md "Updating dependencies".
+
+[versions]
+jspecify = "1.0.1"
+junit = "5.14.4"            # 5.x line on purpose: jqwik 1.10.1 targets JUnit Platform 1.14.4 (ADR 0002)
+assertj = "3.27.7"
+jqwik = "1.10.1"
+errorprone = "2.50.0"
+nullaway = "0.14.2"
+google-java-format = "1.36.1"
+spotless-plugin = "8.10.3"
+errorprone-plugin = "5.1.1"
+
+[libraries]
+jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+assertj-core = { module = "org.assertj:assertj-core", version.ref = "assertj" }
+jqwik = { module = "net.jqwik:jqwik", version.ref = "jqwik" }
+errorprone-core = { module = "com.google.errorprone:error_prone_core", version.ref = "errorprone" }
+nullaway = { module = "com.uber.nullaway:nullaway", version.ref = "nullaway" }
+
+# Gradle plugins consumed as libraries by build-logic's precompiled convention plugins.
+plugin-spotless = { module = "com.diffplug.spotless:spotless-plugin-gradle", version.ref = "spotless-plugin" }
+plugin-errorprone = { module = "net.ltgt.gradle:gradle-errorprone-plugin", version.ref = "errorprone-plugin" }

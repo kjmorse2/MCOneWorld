@@ -1,0 +1,4 @@
+# Anchored to the repository root so the imported offline-tool/ subtree is unaffected.
+/gradlew            text eol=lf
+/gradlew.bat        text eol=crlf
+/gradle/wrapper/*.jar binary

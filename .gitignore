@@ -1,0 +1,13 @@
+# Gradle and build output (root build and build-logic; offline-tool/ keeps its own .gitignore)
+/.gradle/
+/build/
+/build-logic/.gradle/
+/build-logic/build/
+/build-logic/.kotlin/
+/.kotlin/
+/shared/*/build/
+
+# IDEs
+/.idea/
+*.iml
+/.vscode/
