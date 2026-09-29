@@ -76,6 +76,15 @@ public final class SidecarStore {
     return codec.decode(readBytes(root.internal(SidecarRoot.MANIFEST), limits.maxDocumentBytes()));
   }
 
+  /**
+   * Returns the exact bytes of {@code manifest.json}, bounded by the manifest size limit, without
+   * decoding them. Read-only. Used, for example, to plan migrations of legacy manifests that the
+   * current codec cannot decode.
+   */
+  public byte[] readManifestBytes() throws IOException {
+    return readBytes(root.internal(SidecarRoot.MANIFEST), limits.maxDocumentBytes());
+  }
+
   /** Reads {@code manifest.previous.json}, the last-known-good fallback. Read-only. */
   public DecodedManifest readPreviousManifest() throws IOException, ManifestException {
     return codec.decode(

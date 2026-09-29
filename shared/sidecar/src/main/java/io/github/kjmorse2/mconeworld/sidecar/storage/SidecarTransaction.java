@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 package io.github.kjmorse2.mconeworld.sidecar.storage;
 
+import io.github.kjmorse2.mconeworld.domain.ArchiveId;
 import io.github.kjmorse2.mconeworld.domain.Checksum;
 import io.github.kjmorse2.mconeworld.domain.archive.BackupRecord;
 import io.github.kjmorse2.mconeworld.sidecar.manifest.DecodedManifest;
@@ -54,6 +55,65 @@ public final class SidecarTransaction {
   private static final String STAGED_PREVIOUS = "manifest.previous.json";
   private static final int BUFFER = 64 * 1024;
 
+  /**
+   * What the transaction replaces. It is identified by exact bytes and checksum. For ordinary
+   * writes it comes from the decoded current manifest. For schema migrations the current manifest
+   * is legacy and not decodable by this codec, so the migration supplies revision and identity.
+   *
+   * <p>Fields: the exact current manifest bytes and their checksum; the current revision (the
+   * commit must be revision + 1); the archive id the new manifest must keep; and the files the
+   * current manifest references, which were already verified at their own commit.
+   */
+  static final class Base {
+    private final byte[] bytes;
+    private final Checksum checksum;
+    private final long revision;
+    private final ArchiveId archiveId;
+    private final Map<SidecarPath, Checksums.Measured> references;
+
+    Base(
+        byte[] bytes,
+        Checksum checksum,
+        long revision,
+        ArchiveId archiveId,
+        Map<SidecarPath, Checksums.Measured> references) {
+      this.bytes = bytes.clone();
+      this.checksum = checksum;
+      this.revision = revision;
+      this.archiveId = archiveId;
+      this.references = Map.copyOf(references);
+    }
+
+    static Base of(byte[] bytes, Checksum checksum, DecodedManifest decoded) {
+      return new Base(
+          bytes,
+          checksum,
+          decoded.document().revision(),
+          decoded.document().archiveId(),
+          SidecarTransaction.references(decoded.document()));
+    }
+
+    byte[] bytes() {
+      return bytes.clone();
+    }
+
+    Checksum checksum() {
+      return checksum;
+    }
+
+    long revision() {
+      return revision;
+    }
+
+    ArchiveId archiveId() {
+      return archiveId;
+    }
+
+    Map<SidecarPath, Checksums.Measured> references() {
+      return references;
+    }
+  }
+
   private enum State {
     OPEN,
     COMMITTED,
@@ -67,9 +127,7 @@ public final class SidecarTransaction {
   private final SidecarRoot root;
   private final UUID id;
   private final Path dir;
-  private final @Nullable DecodedManifest base;
-  private final byte @Nullable [] baseBytes;
-  private final @Nullable Checksum baseChecksum;
+  private final @Nullable Base base;
   private final List<TransactionRecord.Entry> staged = new ArrayList<>();
   private final List<Path> movedTargets = new ArrayList<>();
   private @Nullable Checksum targetManifest;
@@ -77,13 +135,7 @@ public final class SidecarTransaction {
   private State state = State.OPEN;
   private int counter;
 
-  private SidecarTransaction(
-      SidecarWriter writer,
-      UUID id,
-      Path dir,
-      @Nullable DecodedManifest base,
-      byte @Nullable [] baseBytes,
-      @Nullable Checksum baseChecksum) {
+  private SidecarTransaction(SidecarWriter writer, UUID id, Path dir, @Nullable Base base) {
     this.writer = writer;
     this.store = writer.store();
     this.fs = store.fs();
@@ -91,22 +143,15 @@ public final class SidecarTransaction {
     this.id = id;
     this.dir = dir;
     this.base = base;
-    this.baseBytes = baseBytes;
-    this.baseChecksum = baseChecksum;
   }
 
-  static SidecarTransaction begin(
-      SidecarWriter writer,
-      UUID id,
-      @Nullable DecodedManifest base,
-      byte @Nullable [] baseBytes,
-      @Nullable Checksum baseChecksum)
+  static SidecarTransaction begin(SidecarWriter writer, UUID id, @Nullable Base base)
       throws StorageException {
     StorageFileSystem fs = writer.store().fs();
     SidecarRoot root = writer.store().root();
     Path staging = root.internal(SidecarRoot.STAGING);
     Path dir = staging.resolve(id.toString());
-    SidecarTransaction tx = new SidecarTransaction(writer, id, dir, base, baseBytes, baseChecksum);
+    SidecarTransaction tx = new SidecarTransaction(writer, id, dir, base);
     try {
       if (fs.isSymbolicLink(staging) || (fs.exists(staging) && !fs.isDirectory(staging))) {
         throw new StorageException(
@@ -191,7 +236,7 @@ public final class SidecarTransaction {
     try {
       prepare(next);
       fs.checkpoint(CommitStage.BEFORE_MANIFEST_REPLACEMENT, manifestFile);
-      if (baseBytes != null) {
+      if (base != null) {
         fs.moveAtomically(
             dir.resolve(STAGED_PREVIOUS), root.internal(SidecarRoot.PREVIOUS_MANIFEST));
       }
@@ -247,13 +292,14 @@ public final class SidecarTransaction {
 
   private void prepare(ManifestDocument next) throws IOException {
     writer.lock().verifyHeld();
-    long expectedRevision = base == null ? 0 : base.document().revision() + 1;
+    Base current = base;
+    long expectedRevision = current == null ? 0 : current.revision() + 1;
     if (next.revision() != expectedRevision) {
       throw new StorageException(
           StorageIssueCodes.TRANSACTION_INVALID,
           "New manifest revision must be " + expectedRevision + ", got " + next.revision());
     }
-    if (base != null && !next.archiveId().equals(base.document().archiveId())) {
+    if (current != null && !next.archiveId().equals(current.archiveId())) {
       throw new StorageException(
           StorageIssueCodes.TRANSACTION_INVALID, "The archive id of a sidecar never changes");
     }
@@ -308,8 +354,8 @@ public final class SidecarTransaction {
       throw new StorageException(
           StorageIssueCodes.CHECKSUM_MISMATCH, "Staged manifest did not read back identically");
     }
-    if (baseBytes != null) {
-      writeDurably(dir.resolve(STAGED_PREVIOUS), baseBytes);
+    if (current != null) {
+      writeDurably(dir.resolve(STAGED_PREVIOUS), current.bytes());
     }
     targetManifest = SidecarStore.measure(bytes);
     writeRecord(TransactionRecord.Phase.PREPARED);
@@ -327,7 +373,7 @@ public final class SidecarTransaction {
   }
 
   /** Every path the manifest references, with the content identity it claims. */
-  private static Map<SidecarPath, Checksums.Measured> references(ManifestDocument doc) {
+  static Map<SidecarPath, Checksums.Measured> references(ManifestDocument doc) {
     Map<SidecarPath, Checksums.Measured> refs = new HashMap<>();
     for (FileReference file : doc.files()) {
       refs.put(file.path(), new Checksums.Measured(file.checksum(), file.sizeBytes()));
@@ -343,8 +389,9 @@ public final class SidecarTransaction {
 
   private void verifyReferences(Map<SidecarPath, Checksums.Measured> references)
       throws IOException {
+    Base current = base;
     Map<SidecarPath, Checksums.Measured> baseRefs =
-        base == null ? Map.of() : references(base.document());
+        current == null ? Map.of() : current.references();
     Set<SidecarPath> stagedTargets = new HashSet<>();
     for (TransactionRecord.Entry entry : staged) {
       stagedTargets.add(entry.target());
@@ -395,13 +442,14 @@ public final class SidecarTransaction {
   // --- durability helpers --------------------------------------------------------------------
 
   private void writeRecord(TransactionRecord.Phase phase) throws IOException {
+    Base current = base;
     TransactionRecord record =
         new TransactionRecord(
             id,
             phase,
-            baseChecksum,
-            base == null ? null : base.document().revision(),
-            base == null ? 0 : base.document().revision() + 1,
+            current == null ? null : current.checksum(),
+            current == null ? null : current.revision(),
+            current == null ? 0 : current.revision() + 1,
             staged,
             phase == TransactionRecord.Phase.PREPARED ? targetManifest : null);
     Path file = dir.resolve(TransactionRecord.FILE_NAME);
