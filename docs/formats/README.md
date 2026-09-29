@@ -5,6 +5,7 @@ Each MCOneWorld format is versioned independently of the application release (`s
 | Format | Version | Spec | Introduced |
 |---|---|---|---|
 | Sidecar manifest (JSON) | 1.0 | [manifest-v1.md](manifest-v1.md), example [examples/manifest-v1-example.json](examples/manifest-v1-example.json) | Prompt 04 |
+| Sidecar storage layout, `writer.owner.json`, `transaction.json` | 1 | [sidecar-storage-v1.md](sidecar-storage-v1.md) | Prompt 05 |
 | Chunk index | — | *pending* | Prompts 08–09 |
 | Operation plan / journal | — | *pending* | Prompt 07 |
 | Client/server protocol | — | *pending* | Prompt 10 |

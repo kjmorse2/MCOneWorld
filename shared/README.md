@@ -140,6 +140,32 @@ DecodedManifest f = ManifestFiles.readOnly(path, codec);   // never modifies the
 - `sidecar.storage.SidecarPath`: the only path form ever stored. It is relative, lowercase, portable, and traversal-proof; failures raise `UnsafeSidecarPathException` (`sidecar.path.unsafe`).
 - `ArchiveId` (domain) is the stable archive identity.
 
+### `sidecar.storage`: safe reads, atomic commits, locking, recovery (Prompt 05)
+
+The spec is [`docs/formats/sidecar-storage-v1.md`](../docs/formats/sidecar-storage-v1.md), and the policy is ADR 0004.
+
+```java
+SidecarStore store = SidecarStore.open(SidecarRoot.open(path));       // explicit root only
+DecodedManifest m = store.readManifest();                              // read-only, writes nothing
+RecoveryReport report = store.inspect();                               // read-only leftover classification
+try (SidecarWriter w = store.openWriter(owner, clock, StaleLockPolicy.REFUSE)) { // exclusive lock
+  w.recover();                                                         // explicit, idempotent
+  SidecarTransaction tx = w.begin(m.document().revision());            // BASE_CHANGED if the manifest moved
+  StagedFile f = tx.stage(SidecarPath.of("indexes/ow-r7.idx"), in, maxBytes); // new, immutable path
+  CommitResult r = tx.commit(nextDoc);                                 // revision must be base + 1
+}
+```
+
+- **Commit point:** a single atomic rename of `manifest.json`. The old manifest becomes `manifest.previous.json`.
+- **Before the commit point:** failure means rollback; the previous manifest is untouched.
+- **After the commit point:** only reported, through `cleanupComplete` and `directorySyncSupported`.
+- **Committed data files are immutable:** a different file at the same path gives `DATA_FILE_CONFLICT`.
+- **No atomic rename** means the write is refused (`ATOMIC_MOVE_UNSUPPORTED`); there is no unsafe fallback.
+- **Lock:** a permanent `writer.lock` holding the OS lock, plus `writer.owner.json` metadata with no secrets. Staleness is *provable* only (OS lock free and owner file present), and the default policy is to refuse.
+- **POSIX:** never open `writer.lock` yourself inside a process that holds it; closing any descriptor drops `fcntl` locks.
+- Errors are `StorageException.code()`, from `StorageIssueCodes` (`sidecar.storage.*`, `sidecar.recovery.*`).
+- **Supported:** Linux local filesystems. Not NFS or SMB. Windows is untested.
+
 Test support in `shared:test-fixtures`:
 
 - `ManifestFixtures.fullDocument()`: every v1 member
