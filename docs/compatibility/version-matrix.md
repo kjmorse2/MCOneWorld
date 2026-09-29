@@ -1,6 +1,6 @@
 # MCOneWorld Version Matrix
 
-Status: **PROPOSED**. Nothing in this file is a support claim. Per root `AGENTS.md` §5, a version becomes *supported* only after it passes the recorded validation suite. Until then every row is a *target*.
+Status: build toolchain and shared-library versions are **PINNED** in source control as of Prompt 01 (`gradle/libs.versions.toml`, `gradle/wrapper/gradle-wrapper.properties`, lockfiles, `gradle/verification-metadata.xml`). Minecraft platform rows are **targets**. Nothing in this file is a support claim. Per root `AGENTS.md` §5, a version becomes *supported* only after it passes the recorded validation suite. Until then every row is a *target*.
 
 Observed on 2026-09-27 from primary sources (see "Evidence" below). Re-verify before each pin lands in a build file.
 
@@ -31,25 +31,25 @@ Observed on 2026-09-27 from primary sources (see "Evidence" below). Re-verify be
 
 | Component | Proposed pin | Observed latest | Notes |
 |---|---|---|---|
-| Gradle (root wrapper) | `9.8.0` | `9.8.0` (2026-09-24) | services.gradle.org `versions/current` |
+| Gradle (root wrapper) | `9.8.0`, **pinned**, `distributionSha256Sum=bafd5ce9…58e6c` | `9.8.0` (2026-09-24) | services.gradle.org `versions/current` |
 | Gradle (offline-tool wrapper, existing) | `9.1.0` | — | Unchanged in this milestone |
-| JDK toolchain (build) | Temurin `25.0.4+1` (LTS) | 25.0.4 | Adoptium API; locally available: OpenJDK 25.0.4.1 |
-| Shared-module bytecode (`--release`) | **21** (proposed; see ADR 0002) | — | Keeps the shared modules consumable by the offline tool, which targets 21 today |
+| JDK toolchain (build) | Java **25**, pinned by `languageVersion`. Any JDK ≥ 25.0.4 works; CI uses Temurin `25.0.4`. | 25.0.4 | Auto-download disabled. Local: OpenJDK 25.0.4.1. |
+| Shared-module bytecode (`--release`) | **21**, pinned (ADR 0002) | — | Keeps the shared modules consumable by the offline tool, which targets 21 today |
 | Offline tool bytecode (existing) | 21 | — | `java.sourceCompatibility = VERSION_21`; JavaFX `21` |
 | Paper plugin bytecode (future) | 25 | — | Required by Paper 26.x |
 | Fabric client bytecode (future) | 25 | — | Required by Minecraft 26.x |
-| Gradle toolchain resolver | `org.gradle.toolchains.foojay-resolver-convention` `1.0.0` | 1.0.0 | Only if auto-provisioning is approved |
+| Gradle toolchain resolver | not used | 1.0.0 | Auto-provisioning declined (Q10) |
 
 ## 3. Proposed shared-module library pins
 
-Candidates only. The final set is decided by ADR 0002 and ADR 0003.
+Pinned in `gradle/libs.versions.toml` as of Prompt 01, except the JSON library (added in Prompt 04) and JMH (added in Prompt 08).
 
 | Purpose | Artifact | Version | License | Scope |
 |---|---|---|---|---|
 | JSON (preferred) | `tools.jackson.core:jackson-core` / `jackson-databind` | `3.2.3` | Apache-2.0 | `sidecar` implementation only |
 | JSON (alternative) | `com.google.code.gson:gson` | `2.14.0` | Apache-2.0 | `sidecar` implementation only |
 | Nullness annotations | `org.jspecify:jspecify` | `1.0.1` | Apache-2.0 | compile-only API annotations |
-| Unit tests | `org.junit:junit-bom` | `6.1.3` | EPL-2.0 | test |
+| Unit tests | `org.junit:junit-bom` | **`5.14.4`**, pinned (not 6.1.3; see ADR 0002 amendment) | EPL-2.0 | test |
 | Assertions | `org.assertj:assertj-core` | `3.27.7` | Apache-2.0 | test (not `4.0.0-M1`, which is a milestone) |
 | Property tests | `net.jqwik:jqwik` | `1.10.1` | EPL-2.0 | test |
 | Formatter | Spotless Gradle plugin `com.diffplug.spotless` | `8.10.3` | Apache-2.0 | build |

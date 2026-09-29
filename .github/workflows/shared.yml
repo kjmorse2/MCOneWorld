@@ -1,0 +1,44 @@
+# CI for the MCOneWorld root build. Read-only, no secrets.
+# Note: offline-tool/.github/workflows/release.yml belongs to the imported MCA Selector subtree and
+# is never run by GitHub (only root .github/workflows is), so it is intentionally left untouched.
+name: Shared modules
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  shared-check:
+    name: sharedCheck (JDK 25)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.2
+      - uses: actions/setup-java@v5.2.0
+        with:
+          distribution: temurin
+          java-version: '25.0.4'
+      # Runs tests, spotless, Error Prone/NullAway, architecture guards, build-logic tests.
+      # Dependency verification (gradle/verification-metadata.xml) and strict locking apply.
+      - run: ./gradlew --no-daemon sharedCheck assemble
+      - name: Reproducibility (second clean build must produce identical jars)
+        run: |
+          sha256sum shared/*/build/libs/*.jar > /tmp/first.sha
+          ./gradlew --no-daemon clean assemble
+          sha256sum -c /tmp/first.sha
+
+  offline-tool-build:
+    # Guards the imported MCA Selector build against accidental breakage by root changes.
+    name: offline-tool build (JDK 21)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.2
+      - uses: actions/setup-java@v5.2.0
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: ./gradlew --no-daemon build
+        working-directory: offline-tool

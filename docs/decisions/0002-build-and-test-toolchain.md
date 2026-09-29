@@ -112,6 +112,18 @@
 - Q11: dependency verification is accepted (SHA-256).
 - JPMS `module-info.java` is **not** approved and not introduced (Prompt 01 §7).
 
+## Implementation notes (Prompt 01)
+
+- JSpecify is an **`api`** dependency, not compile-only. `@NullMarked` has runtime retention. If JSpecify were compile-only, consumers compiling with `-Xlint:all -Werror` would fail with a "class file for NullMarked not found" warning.
+- NullAway runs with `OnlyNullMarked=true` and `JSpecifyMode=true` on main sources. It is off for test sources, which deliberately exercise null inputs.
+- Every Java file carries `// SPDX-License-Identifier: MIT`. Spotless enforces this, except in `package-info.java`: Spotless skips those files, so the header is maintained by hand there.
+- Each jar embeds `META-INF/LICENSE`.
+- Architecture guards (`build-logic`):
+  - `verifySharedDependencies` checks the resolved production graph.
+  - `verifySharedBytecode` runs `jdeps` on compiled classes.
+  - The rule table is unit tested in `SharedArchitectureRulesTest`.
+- `org.gradle.warning.mode=fail`: Gradle deprecations fail the build, so they surface before Gradle 10.
+
 ## Migration impact
 
 None on persistent data. This ADR affects only build output.
