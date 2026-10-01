@@ -10,7 +10,10 @@ import io.github.kjmorse2.mconeworld.sidecar.index.ChunkIndexException;
 import io.github.kjmorse2.mconeworld.sidecar.index.ChunkIndexReader;
 import io.github.kjmorse2.mconeworld.sidecar.index.ChunkMutation;
 import io.github.kjmorse2.mconeworld.sidecar.index.ChunkQuery;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
@@ -64,6 +67,39 @@ abstract class SpikeIndexBase implements SpikeIndex {
 
   /** Releases storage. Called once. */
   abstract void closeStorage();
+
+  /**
+   * Whether batches record the mutations themselves instead of resolved records. Every mutation's
+   * validity depends only on whether the chunk has a record ({@link ChunkMutation#applyTo} rejects
+   * only {@code RecordActivity} and {@code SetProtection} without one), so a deferred batch
+   * validates with {@link #committedExists} and never reads a record. The candidate then folds the
+   * mutations through {@code applyTo} when it reads or checkpoints.
+   */
+  boolean deferredMutations() {
+    return false;
+  }
+
+  /** Whether {@code chunk} has a committed record. Deferred candidates answer without decoding. */
+  boolean committedExists(ChunkPosition chunk) throws ChunkIndexException {
+    return committedRecord(chunk) != null;
+  }
+
+  /** Durably commits deferred mutations, in order per chunk. Only for deferred candidates. */
+  void commitMutations(Map<ChunkPosition, List<ChunkMutation>> mutations)
+      throws ChunkIndexException {
+    throw new UnsupportedOperationException("not a deferred candidate");
+  }
+
+  /** Whether a record exists after {@code mutation}, given whether one existed before. */
+  static boolean existsAfter(ChunkMutation mutation, boolean before) {
+    return switch (mutation) {
+      case ChunkMutation.ObserveFirst o -> true;
+      case ChunkMutation.Replace r -> true;
+      case ChunkMutation.Remove r -> false;
+      case ChunkMutation.RecordActivity a -> before;
+      case ChunkMutation.SetProtection p -> before;
+    };
+  }
 
   /** A reader whose usability also depends on the index being open. */
   abstract class ReaderBase implements ChunkIndexReader {
@@ -143,12 +179,18 @@ abstract class SpikeIndexBase implements SpikeIndex {
 
   private final class Batch implements ChunkIndexBatch {
     private final Map<ChunkPosition, @Nullable ChunkProvenance> pending = new HashMap<>();
+    private final Map<ChunkPosition, List<ChunkMutation>> deferred = new LinkedHashMap<>();
+    private final Map<ChunkPosition, Boolean> exists = new HashMap<>();
     private boolean done;
     private boolean poisoned;
 
     @Override
     public void apply(ChunkMutation mutation) throws ChunkIndexException {
       requireWritable();
+      if (deferredMutations()) {
+        applyDeferred(mutation);
+        return;
+      }
       ChunkPosition chunk = mutation.chunk();
       @Nullable ChunkProvenance existing;
       if (pending.containsKey(chunk)) {
@@ -168,10 +210,30 @@ abstract class SpikeIndexBase implements SpikeIndex {
       }
     }
 
+    private void applyDeferred(ChunkMutation mutation) throws ChunkIndexException {
+      ChunkPosition chunk = mutation.chunk();
+      Boolean pendingExists = exists.get(chunk);
+      boolean before = pendingExists != null ? pendingExists : committedExists(chunk);
+      if (!before && !existsAfter(mutation, false) && !(mutation instanceof ChunkMutation.Remove)) {
+        try {
+          mutation.applyTo(null); // throws the contract's own record_absent rejection
+        } catch (ChunkIndexException e) {
+          poisoned = true;
+          throw e;
+        }
+      }
+      deferred.computeIfAbsent(chunk, c -> new ArrayList<>()).add(mutation);
+      exists.put(chunk, existsAfter(mutation, before));
+    }
+
     @Override
     public void commit() throws ChunkIndexException {
       requireWritable();
-      commitChanges(pending);
+      if (deferredMutations()) {
+        commitMutations(deferred);
+      } else {
+        commitChanges(pending);
+      }
       finish();
     }
 
@@ -185,6 +247,8 @@ abstract class SpikeIndexBase implements SpikeIndex {
     private void finish() {
       done = true;
       pending.clear();
+      deferred.clear();
+      exists.clear();
       if (openBatch == this) {
         openBatch = null;
       }

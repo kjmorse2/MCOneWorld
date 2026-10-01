@@ -145,6 +145,18 @@ public class RegionStoreIndex extends SpikeIndexBase {
     return block(chunk.dimension(), entry).at(ChunkOrder.localIndex(key));
   }
 
+  /** Whether {@code snapshot} has a record for {@code chunk}, from its presence bitmap alone. */
+  static boolean present(Catalog snapshot, ChunkPosition chunk) {
+    NavigableMap<Long, Catalog.Entry> map = snapshot.regions.get(chunk.dimension());
+    if (map == null) {
+      return false;
+    }
+    long key = ChunkOrder.key(chunk);
+    Catalog.Entry entry =
+        map.get(ChunkOrder.regionStart(ChunkOrder.regionX(key), ChunkOrder.regionZ(key)));
+    return entry != null && entry.present(ChunkOrder.localIndex(key));
+  }
+
   final RecordCodec.Block block(DimensionKey dimension, Catalog.Entry entry)
       throws ChunkIndexException {
     long cacheKey = entry.fileId * 0x9E3779B97F4A7C15L ^ entry.offset;
