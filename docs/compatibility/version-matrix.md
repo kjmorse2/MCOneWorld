@@ -42,7 +42,7 @@ Observed on 2026-09-27 from primary sources (see "Evidence" below). Re-verify be
 
 ## 3. Proposed shared-module library pins
 
-Pinned in `gradle/libs.versions.toml`, except JMH, which is added in Prompt 08.
+Pinned in `gradle/libs.versions.toml`.
 
 | Purpose | Artifact | Version | License | Scope |
 |---|---|---|---|---|
@@ -57,11 +57,16 @@ Pinned in `gradle/libs.versions.toml`, except JMH, which is added in Prompt 08.
 | Static analysis | `com.google.errorprone:error_prone_core` | `2.50.0` | Apache-2.0 | build |
 | Error Prone Gradle plugin | `net.ltgt.errorprone` | `5.1.1` | Apache-2.0 | build |
 | Nullness checker | `com.uber.nullaway:nullaway` | `0.14.2` | MIT | build |
-| Benchmarks | `org.openjdk.jmh:jmh-core` | `1.37` | GPL-2.0 WITH Classpath-exception-2.0 | `jmh` source set only, never shipped |
-| JMH Gradle plugin | `me.champeau.jmh` | `0.7.3` | Apache-2.0 | build |
+| Benchmarks (not used) | `org.openjdk.jmh:jmh-core` | `1.37` | GPL-2.0 WITH Classpath-exception-2.0 | **not adopted** in Prompt 08. The chunk-index measurements are whole operations on disk-backed state, each case in its own fixed-heap JVM, so a small custom harness fits better than a microbenchmark framework (see [`docs/benchmarks/chunk-index/README.md`](../benchmarks/chunk-index/README.md)). |
 | Coverage (diagnostic) | JaCoCo (bundled with Gradle) | Gradle default for 9.8.0 | EPL-2.0 | build |
 
-Chunk-index candidates for Prompt 08 benchmarking (not selected here): `org.xerial:sqlite-jdbc` `3.53.4.0` (Apache-2.0, bundles native code), `com.h2database:h2` `2.5.252` (MVStore, MPL-2.0/EPL-1.0, pure Java), and a custom per-region binary format (no dependency).
+**Chunk-index spike dependencies (Prompt 08).** These are pinned and verified, but used **only** by `shared/sidecar`'s `bench` source set, which is never packaged or on a production classpath. They are removed or promoted when [ADR 0007](../decisions/0007-chunk-index-encoding.md) is decided.
+
+| Candidate | Artifact | Version | License | Notes |
+|---|---|---|---|---|
+| C2 | `org.xerial:sqlite-jdbc` | `3.53.4.0` | Apache-2.0, bundling public-domain SQLite | Bundles native libraries per OS and architecture. Paper's server build itself puts `sqlite-jdbc 3.49.1.0` on the server classpath (`paper-server/build.gradle.kts`, checked 2026-09-30). |
+| C3 | `org.roaringbitmap:RoaringBitmap` | `1.6.23` | Apache-2.0 | Pure Java; has a portable serialization spec |
+| C4 | `com.h2database:h2-mvstore` | `2.5.252` | MPL-2.0 or EPL-1.0 | Pure Java. H2's storage format changed incompatibly between 1.4 and 2.x. |
 
 ## 4. Evidence
 

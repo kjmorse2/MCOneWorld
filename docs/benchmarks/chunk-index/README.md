@@ -6,7 +6,7 @@ The evidence behind [ADR 0007](../../decisions/0007-chunk-index-encoding.md).
 |---|---|
 | [`budgets.md`](budgets.md) | Gate and target budgets, and the datasets. Committed **before** any measurement (`ab5a0fa0`). |
 | [`results.md`](results.md) | The summarized results: budget verdicts, per-dataset tables, and observations |
-| `raw/<run>.jsonl` | Raw results, one JSON object per line. Small (tens of kilobytes), so they are committed. Generated index files never are. |
+| `raw/<run>.jsonl` | Raw results, one JSON object per line. Each file is under 200 KB, so they are committed. Generated index files never are. |
 
 The code is in `shared/sidecar/src/bench/` (see its [README](../../../shared/sidecar/src/bench/README.md)). The datasets are `ChunkDatasets` in `shared:test-fixtures`.
 
@@ -18,7 +18,7 @@ The code is in `shared/sidecar/src/bench/` (see its [README](../../../shared/sid
 ./gradlew -q :shared:sidecar:benchSummarize -Pbench.args="docs/benchmarks/chunk-index/raw/<run>.jsonl"
 ```
 
-Index files are written under `shared/sidecar/build/chunk-index-bench/`. That location must be on the filesystem you want to measure: a RAM-backed `/tmp` would hide every `fsync`. The full run needs about 3 GB of free space at peak and runs for roughly one to two hours, because the slowest candidate dominates.
+Index files are written under `shared/sidecar/build/chunk-index-bench/`. That location must be on the filesystem you want to measure: a RAM-backed `/tmp` would hide every `fsync`. The full run needs about 3 GB of free space at peak. It takes about 30 minutes without `c1-region-files`. That candidate needs one `fsync` per touched region and adds more than an hour on the large datasets, so pass `--candidates` to leave it out.
 
 ### How each case runs
 
@@ -48,7 +48,7 @@ One compact JSON object per line. Lines are only ever appended, so a file can ho
 |---|---|
 | `format`, `version` | Always `"mconeworld-bench-result"` and `1` |
 | `run` | `run-<UTC time>-<commit>[-dirty]`. `-dirty` means `shared/` or `gradle/` had uncommitted changes. |
-| `candidate` | `c1-region-files`, `c1-region-segments`, `c2-sqlite`, `c3-roaring`, or `c4-mvstore` |
+| `candidate` | `c1-region-files`, `c1-region-segments`, `c1-region-log`, `c2-sqlite`, `c3-roaring`, or `c4-mvstore` |
 | `dataset`, `scale` | The `ChunkDatasets` name and its linear scale |
 | `phase` | `env`, `build`, `query`, `corruption`, `crash`, or (for status lines) the child's phase |
 | `metric`, `unit` | See below |
@@ -67,7 +67,7 @@ The `env` line has no `candidate`. It records the commit, the JVM, the OS, the C
 | Disk | `disk.bytes`, `disk.files`, `disk.bytesPerRecord`; after the update batches, `disk.afterUpdates.bytes` and `disk.afterUpdates.files` |
 | Open | `open.cold`, `open.warm` (ms) |
 | Lookups and scans | `lookup.uniform`, `lookup.local`, `scan.rect16` (latency); `scan.rect512`, `scan.season`, `scan.full` (rates); `envelope.season`, `count.season` (latency) |
-| Updates and verify | `update.batch1000` (latency of apply plus durable commit); `verify.seconds` |
+| Updates and verify | `update.batch1000` (latency of apply plus durable commit); `checkpoint.seconds` (C1-log's explicit checkpoint after the updates); `verify.seconds` |
 | Memory | `heap.indexRetained` (live heap held by the open index after every workload, measured after full GCs), `heap.peakUsed` (sampled used heap, including garbage), `rss.peak` (the process's VmHWM), `heap.max` |
 | Corruption probe | `corruption.{read,verify}.{detected,crashed,harmless,silent}`, `corruption.trials`, `corruption.bytes`, `corruption.silentExamples` |
 | Crash probe | `crash.trials`, `crash.acknowledgedState`, `crash.pendingState`, `crash.inconsistent`, `crash.openFailed`, `crash.commitsBeforeKill`, `crash.problems` |
