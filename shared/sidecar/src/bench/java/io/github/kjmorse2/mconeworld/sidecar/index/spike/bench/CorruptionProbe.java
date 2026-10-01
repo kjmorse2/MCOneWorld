@@ -139,7 +139,7 @@ public final class CorruptionProbe {
     }
   }
 
-  static void flipByte(Path file, long offset, int mask) throws IOException {
+  public static void flipByte(Path file, long offset, int mask) throws IOException {
     try (FileChannel channel =
         FileChannel.open(file, StandardOpenOption.READ, StandardOpenOption.WRITE)) {
       ByteBuffer one = ByteBuffer.allocate(1);

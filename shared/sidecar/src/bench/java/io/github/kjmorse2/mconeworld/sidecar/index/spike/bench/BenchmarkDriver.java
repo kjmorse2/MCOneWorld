@@ -214,6 +214,11 @@ public final class BenchmarkDriver {
       return "";
     }
     List<String> lines = Files.readAllLines(log);
+    for (String line : lines) {
+      if (line.contains("Exception") || line.contains("Error")) {
+        return line.trim(); // the cause, e.g. "java.lang.OutOfMemoryError: Java heap space"
+      }
+    }
     return String.join(" / ", lines.subList(Math.max(0, lines.size() - 3), lines.size()));
   }
 

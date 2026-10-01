@@ -57,19 +57,26 @@ import org.jspecify.annotations.Nullable;
  *       commit (new blocks, then a catalog swap), and starts an empty log for the new generation.
  *       It runs when called, or inside a commit once {@value #OVERLAY_LIMIT} mutations are logged,
  *       which bounds memory.
- *   <li><b>Open</b> replays the log matching the catalog generation, up to its first invalid frame
- *       (the torn tail of an unacknowledged commit). A log for an older generation is stale (a
- *       checkpoint finished after it) and is ignored. A newer one is corruption. A log with a torn
- *       tail is never appended to: the next commit checkpoints first.
+ *   <li><b>Open</b> replays the log matching the catalog generation. Only an <em>incomplete</em>
+ *       final frame is a torn tail (an unacknowledged commit) and is ignored; a complete frame with
+ *       a bad checksum, or a damaged frame header anywhere, is corruption and fails closed. (The
+ *       first version treated any bad frame as the tail, and the corruption probe showed it
+ *       silently dropping acknowledged commits: the rule ADR 0006 already rejected for journals.) A
+ *       log for an older generation is stale (a checkpoint finished after it) and is ignored. A
+ *       newer one is corruption. A log with a torn tail is never appended to: the next commit
+ *       checkpoints first.
  * </ul>
  *
- * <p>Delta frame: {@code u32 length | payload | u32 CRC-32C(payload)}. Payload: varint season count
+ * <p>Delta frame: {@code u32 length | u32 CRC-32C(length) | payload | u32 CRC-32C(payload)}. The
+ * header checksum stops a damaged length from passing as a torn write. Payload: varint season count
  * and 16-byte seasons; varint chunk count; per chunk: utf dimension, i64 key, varint mutation
  * count, then per mutation a type byte (1 ObserveFirst, 2 RecordActivity, 3 SetProtection, 4
  * Replace, 5 Remove) and its fields.
  */
 public final class RegionLogIndex extends SpikeIndexBase {
   static final int OVERLAY_LIMIT = 100_000;
+  private static final int MAX_FRAME = 64 << 20;
+  private static final int FRAME_OVERHEAD = 12;
   private static final byte[] LOG_MAGIC = {'M', 'C', 'O', 'L'};
 
   private final Path directory;
@@ -125,7 +132,7 @@ public final class RegionLogIndex extends SpikeIndexBase {
     try {
       Path file = logFile(generation);
       if (Files.exists(file)) {
-        overlay = replay(Files.readAllBytes(file), generation, false);
+        overlay = replay(Files.readAllBytes(file), generation);
       }
       try (var others = Files.list(directory)) {
         for (Path p : (Iterable<Path>) others::iterator) {
@@ -178,11 +185,10 @@ public final class RegionLogIndex extends SpikeIndexBase {
   // ---- delta log -----------------------------------------------------------------------------
 
   /**
-   * Replays frames. With {@code strict}, any invalid frame is corruption; otherwise the first
-   * invalid frame ends the log (a torn tail).
+   * Replays every complete frame. An incomplete final frame (a torn tail) ends the log; any other
+   * invalid frame is corruption.
    */
-  private static Overlay replay(byte[] bytes, long generation, boolean strict)
-      throws ChunkIndexException {
+  private static Overlay replay(byte[] bytes, long generation) throws ChunkIndexException {
     ByteReader header = new ByteReader(bytes, 0, bytes.length, "delta log");
     for (byte b : LOG_MAGIC) {
       if (header.u8() != (b & 0xFF)) {
@@ -192,35 +198,49 @@ public final class RegionLogIndex extends SpikeIndexBase {
     if (header.i64() != generation) {
       throw SpikeCodes.corrupt("delta log: generation mismatch");
     }
-    int end = validLength(bytes);
-    if (strict && end != bytes.length) {
-      throw SpikeCodes.corrupt("delta log: invalid frame at " + end);
-    }
+    int end = completeFrames(bytes);
     Overlay result = Overlay.EMPTY;
     int position = LOG_MAGIC.length + 8;
     while (position < end) {
       int length = new ByteReader(bytes, position, 4, "delta length").i32();
-      result = result.plus(decodeDelta(new ByteReader(bytes, position + 4, length, "delta")));
-      position += 8 + length;
+      result = result.plus(decodeDelta(new ByteReader(bytes, position + 8, length, "delta")));
+      position += FRAME_OVERHEAD + length;
     }
     return result;
   }
 
-  /** The length of the prefix made of complete, CRC-valid frames. */
-  private static int validLength(byte[] bytes) throws ChunkIndexException {
+  /**
+   * Returns the end of the last complete, valid frame. Fewer bytes than a header, or a valid header
+   * whose payload runs past the end of the file, is a torn tail. A header or payload checksum
+   * failure on bytes that are all present is corruption.
+   */
+  private static int completeFrames(byte[] bytes) throws ChunkIndexException {
     int position = LOG_MAGIC.length + 8;
-    while (bytes.length - position >= 8) {
+    while (position < bytes.length) {
+      int remaining = bytes.length - position;
+      if (remaining < 8) {
+        return position; // torn inside a header
+      }
       int length = new ByteReader(bytes, position, 4, "delta length").i32();
-      if (length < 0 || length > bytes.length - position - 8) {
-        return position;
+      CRC32C headerCrc = new CRC32C();
+      headerCrc.update(bytes, position, 4);
+      if (new ByteReader(bytes, position + 4, 4, "delta header crc").i32()
+          != (int) headerCrc.getValue()) {
+        throw SpikeCodes.corrupt("delta log: frame header damaged at offset " + position);
+      }
+      if (length < 0 || length > MAX_FRAME) {
+        throw SpikeCodes.corrupt("delta log: frame length " + length + " at offset " + position);
+      }
+      if (remaining < FRAME_OVERHEAD + length) {
+        return position; // torn inside a payload: the commit was never acknowledged
       }
       CRC32C crc = new CRC32C();
-      crc.update(bytes, position + 4, length);
-      int stored = new ByteReader(bytes, position + 4 + length, 4, "delta crc").i32();
-      if (stored != (int) crc.getValue()) {
-        return position;
+      crc.update(bytes, position + 8, length);
+      if (new ByteReader(bytes, position + 8 + length, 4, "delta crc").i32()
+          != (int) crc.getValue()) {
+        throw SpikeCodes.corrupt("delta log: frame checksum mismatch at offset " + position);
       }
-      position += 8 + length;
+      position += FRAME_OVERHEAD + length;
     }
     return position;
   }
@@ -404,7 +424,7 @@ public final class RegionLogIndex extends SpikeIndexBase {
       RegionStoreIndex.writeFully(channel, header.toByteArray(), 0);
       channel.force(true);
       RegionStoreIndex.syncDirectory(directory);
-    } else if (validLength(Files.readAllBytes(file)) != channel.size()) {
+    } else if (completeFrames(Files.readAllBytes(file)) != channel.size()) {
       channel.close();
       throw new TornLogException();
     }
@@ -455,8 +475,18 @@ public final class RegionLogIndex extends SpikeIndexBase {
     byte[] payload = encodeDelta(mutations);
     CRC32C crc = new CRC32C();
     crc.update(payload);
-    ByteWriter frame = new ByteWriter(payload.length + 8);
-    frame.i32(payload.length).bytes(payload).i32((int) crc.getValue());
+    CRC32C headerCrc = new CRC32C();
+    headerCrc.update(
+        new byte[] {
+          (byte) (payload.length >>> 24), (byte) (payload.length >>> 16),
+          (byte) (payload.length >>> 8), (byte) payload.length
+        });
+    ByteWriter frame = new ByteWriter(payload.length + FRAME_OVERHEAD);
+    frame
+        .i32(payload.length)
+        .i32((int) headerCrc.getValue())
+        .bytes(payload)
+        .i32((int) crc.getValue());
     try {
       FileChannel channel;
       try {
@@ -523,7 +553,7 @@ public final class RegionLogIndex extends SpikeIndexBase {
     requireOpen();
     base.verify();
     try {
-      replay(Files.readAllBytes(logFile(logGeneration)), logGeneration, true);
+      replay(Files.readAllBytes(logFile(logGeneration)), logGeneration);
     } catch (NoSuchFileException e) {
       // No commits since the last checkpoint.
     } catch (IOException e) {

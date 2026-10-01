@@ -188,4 +188,27 @@ class CandidateDifferentialTest {
       compare(world, reference, index, 23);
     }
   }
+
+  @org.junit.jupiter.api.Test
+  void deltaLogDamageBeforeTheEndIsCorruptionNotATornTail() throws Exception {
+    SyntheticWorld world = ChunkDatasets.named("friend-server", 0.2);
+    Path directory = temp.resolve("damaged");
+    try (RegionLogIndex index = RegionLogIndex.open(directory)) {
+      Workload.bulkLoad(world, 300, index); // several frames, no checkpoint
+    }
+    Path log;
+    try (var files = java.nio.file.Files.list(directory)) {
+      log =
+          files
+              .filter(p -> p.getFileName().toString().startsWith("deltas-"))
+              .findFirst()
+              .orElseThrow();
+    }
+    // Flip one payload byte of the first frame: later, acknowledged frames must not vanish.
+    io.github.kjmorse2.mconeworld.sidecar.index.spike.bench.CorruptionProbe.flipByte(
+        log, 12 + 8 + 5, 0x40);
+    assertThatThrownBy(() -> RegionLogIndex.open(directory))
+        .isInstanceOf(ChunkIndexException.class)
+        .hasMessageContaining("checksum");
+  }
 }

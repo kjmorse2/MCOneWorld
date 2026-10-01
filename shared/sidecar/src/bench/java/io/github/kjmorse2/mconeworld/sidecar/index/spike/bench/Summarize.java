@@ -50,7 +50,10 @@ public final class Summarize {
     Map<String, String> fields = new LinkedHashMap<>();
     Matcher m = MEMBER.matcher(line);
     while (m.find()) {
-      String value = m.group(3) != null ? m.group(3).replace("\\\"", "\"") : m.group(2);
+      String value =
+          m.group(3) != null
+              ? m.group(3).replace("\\\"", "\"").replace("\\u0009", " ").replace("\\t", " ")
+              : m.group(2);
       fields.put(m.group(1), value);
     }
     return fields;
