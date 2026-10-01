@@ -11,5 +11,6 @@ Status values: `Proposed` → `Accepted` | `Rejected` | `Superseded by NNNN`. On
 | [0003](0003-sidecar-json-stack.md) | Sidecar JSON library and canonical encoding | Accepted |
 | [0004](0004-sidecar-storage-durability-and-locking.md) | Sidecar storage durability, atomicity, and locking | Accepted |
 | [0005](0005-manifest-migration-guarantees.md) | Manifest schema migration guarantees | Accepted |
+| [0006](0006-operation-plans-and-journals.md) | Operation plans and durable journals | Accepted |
 
 Decisions reserved for later milestones and **not** decided here: the chunk-index encoding (Prompt 08), the offline tool's relationship to MCA Selector (root §22), and the other deferred choices in root §22.

@@ -36,6 +36,15 @@ public interface StorageFileSystem {
   /** Creates a new file, failing if anything exists at {@code file}, and opens it for writing. */
   WritableFile createNew(Path file) throws IOException;
 
+  /**
+   * Opens an existing regular file for appending: writes go to its end. Used only for append-only
+   * operation journals.
+   */
+  WritableFile openAppend(Path file) throws IOException;
+
+  /** Returns the size in bytes of an existing regular file. */
+  long size(Path file) throws IOException;
+
   /** Opens an existing regular file for reading. */
   InputStream openRead(Path file) throws IOException;
 

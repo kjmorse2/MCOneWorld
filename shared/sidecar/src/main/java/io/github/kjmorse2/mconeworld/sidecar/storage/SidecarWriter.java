@@ -182,6 +182,22 @@ public final class SidecarWriter implements AutoCloseable {
     }
   }
 
+  /**
+   * Durable writes to the {@code operations/} area (plans and journals), under this writer's lock.
+   */
+  public OperationFileWriter operationFiles() {
+    return new OperationFileWriter(this);
+  }
+
+  /**
+   * Verifies that this writer still holds the lock.
+   *
+   * @throws StorageException {@code LOCK_LOST} if it does not
+   */
+  public void verifyLockHeld() throws StorageException {
+    lock.verifyHeld();
+  }
+
   SidecarLock lock() {
     return lock;
   }

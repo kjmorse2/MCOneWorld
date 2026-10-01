@@ -1,0 +1,103 @@
+{
+  "archive": "a4c10000-0000-4000-8000-000000000001",
+  "backup": {
+    "backup": {
+      "checksum": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "id": "bacc0000-0000-4000-8000-000000000001"
+    },
+    "kind": "EXISTING"
+  },
+  "createdAt": "2026-01-01T00:01:00Z",
+  "createdBy": {
+    "name": "mconeworld-tool",
+    "version": "0.1.0"
+  },
+  "format": "mconeworld-operation-plan",
+  "id": "0be40000-0000-4000-8000-000000000001",
+  "impact": "DESTRUCTIVE",
+  "preconditions": {
+    "checksums": {
+      "world:level.dat": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "world:region/r.-1.0.mca": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    "facts": {
+      "minecraft:data_version": "4903"
+    },
+    "manifest": {
+      "checksum": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "revision": 7,
+      "state": "AT_REVISION"
+    }
+  },
+  "rollback": {
+    "description": "Restore backup 1 over the world directory",
+    "strategy": "RESTORE_BACKUP"
+  },
+  "schemaVersion": "1.0",
+  "steps": [
+    {
+      "action": "mconeworld:delete_chunks",
+      "description": "Delete the selected chunks and their entity and POI data",
+      "retrySafe": false,
+      "targets": [
+        0
+      ]
+    },
+    {
+      "action": "mconeworld:reset_player_progress",
+      "description": "Reset the player's season progression",
+      "retrySafe": true,
+      "targets": [
+        1,
+        2
+      ]
+    },
+    {
+      "action": "mconeworld:commit_sidecar",
+      "description": "Record the deletion in the sidecar",
+      "retrySafe": false,
+      "targets": [
+        2,
+        3,
+        4
+      ]
+    }
+  ],
+  "targets": [
+    {
+      "dimension": "minecraft:overworld",
+      "kind": "chunkArea",
+      "maxX": -1,
+      "maxZ": 31,
+      "minX": -32,
+      "minZ": 0
+    },
+    {
+      "kind": "player",
+      "player": "91a70000-0000-4000-8000-000000000001"
+    },
+    {
+      "kind": "season",
+      "season": "5ea50000-0000-4000-8000-000000000001"
+    },
+    {
+      "kind": "sidecarManifest"
+    },
+    {
+      "key": "spawn-hub",
+      "kind": "extension",
+      "type": "example-plugin:warp"
+    }
+  ],
+  "type": "mconeworld:chunk_deletion",
+  "validations": [
+    {
+      "check": "mconeworld:verify_regions",
+      "description": "Reopen every touched region"
+    },
+    {
+      "check": "mconeworld:verify_manifest",
+      "description": "Re-read the manifest"
+    }
+  ]
+}

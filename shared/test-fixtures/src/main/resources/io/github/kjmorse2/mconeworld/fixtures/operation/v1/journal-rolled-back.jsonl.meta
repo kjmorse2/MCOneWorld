@@ -1,0 +1,7 @@
+# Golden fixture metadata (shared/AGENTS.md "Golden files include format version and expected checksum").
+# The journal of OperationFixtures.goldenJournalEvents for fullPlan(), entry n recorded at
+# 2026-01-01T00:00:00Z + 100 + n seconds; reviewed by hand before pinning.
+format=mconeworld-operation-journal
+schemaVersion=1.0
+entries=12
+sha256=55951141343c3d2bffde84134e493012c67892277f83a0d92c97fba2777b5898

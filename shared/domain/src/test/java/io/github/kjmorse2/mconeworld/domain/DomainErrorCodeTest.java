@@ -34,6 +34,9 @@ class DomainErrorCodeTest {
     expected.put(DomainErrorCode.DUPLICATE_ID, "domain.id.duplicate");
     expected.put(DomainErrorCode.REFERENCE_NOT_FOUND, "domain.reference.not_found");
     expected.put(DomainErrorCode.VALUE_INVALID, "domain.value.invalid");
+    expected.put(DomainErrorCode.TEXT_INVALID, "domain.text.invalid");
+    expected.put(DomainErrorCode.KEY_MALFORMED, "domain.key.malformed");
+    expected.put(DomainErrorCode.OPERATION_PLAN_INVALID, "domain.operation.plan_invalid");
 
     assertThat(DomainErrorCode.values()).containsExactlyInAnyOrderElementsOf(expected.keySet());
     expected.forEach((code, text) -> assertThat(code.code()).isEqualTo(text));

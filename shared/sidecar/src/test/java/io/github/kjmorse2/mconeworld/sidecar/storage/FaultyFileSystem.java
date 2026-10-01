@@ -98,13 +98,38 @@ final class FaultyFileSystem implements StorageFileSystem {
   @Override
   public WritableFile createNew(Path file) throws IOException {
     mutations.incrementAndGet();
-    WritableFile delegate = real.createNew(file);
+    return track(file, real.createNew(file));
+  }
+
+  @Override
+  public WritableFile openAppend(Path file) throws IOException {
+    mutations.incrementAndGet();
+    return track(file, real.openAppend(file));
+  }
+
+  @Override
+  public long size(Path file) throws IOException {
+    return real.size(file);
+  }
+
+  /** Called before each write and sync of a file opened for writing; may throw. */
+  interface WriteAction {
+    void run(Path file, boolean sync) throws IOException;
+  }
+
+  @Nullable WriteAction onWrite;
+
+  private WritableFile track(Path file, WritableFile delegate) {
     openHandles.incrementAndGet();
     return new WritableFile() {
       private boolean closed;
 
       @Override
       public void write(byte[] bytes, int offset, int length) throws IOException {
+        WriteAction action = onWrite;
+        if (action != null) {
+          action.run(file, false);
+        }
         if (written + length > capacityBytes) {
           throw new IOException("No space left on device (simulated)");
         }
@@ -114,6 +139,10 @@ final class FaultyFileSystem implements StorageFileSystem {
 
       @Override
       public void sync() throws IOException {
+        WriteAction action = onWrite;
+        if (action != null) {
+          action.run(file, true);
+        }
         delegate.sync();
       }
 

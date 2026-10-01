@@ -1,0 +1,6 @@
+# Golden fixture metadata (shared/AGENTS.md "Golden files include format version and expected checksum").
+# Produced by OperationPlanCodec.encode(OperationFixtures.fullPlan()); reviewed by hand before pinning.
+# The SHA-256 of these bytes is also the plan digest recorded in journal-rolled-back.jsonl.
+format=mconeworld-operation-plan
+schemaVersion=1.0
+sha256=5836517898af717d2a1b8cfad77aa8bb438167fd7941e29ee0e69acb0cd7e3e4

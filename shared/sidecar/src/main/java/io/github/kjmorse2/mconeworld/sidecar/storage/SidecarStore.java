@@ -91,6 +91,11 @@ public final class SidecarStore {
         readBytes(root.internal(SidecarRoot.PREVIOUS_MANIFEST), limits.maxDocumentBytes()));
   }
 
+  /** Read-only access to the {@code operations/} area (plans and journals). */
+  public OperationFiles operationFiles() {
+    return new OperationFiles(this);
+  }
+
   /**
    * Acquires the writer lock and returns a writer. Close the writer to release the lock.
    *

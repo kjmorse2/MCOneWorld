@@ -41,7 +41,13 @@ public enum DomainErrorCode {
   /** A referenced record (for example a season) does not exist. */
   REFERENCE_NOT_FOUND("domain.reference.not_found"),
   /** A scalar value is outside its documented domain (for example a negative size). */
-  VALUE_INVALID("domain.value.invalid");
+  VALUE_INVALID("domain.value.invalid"),
+  /** Bounded human-readable text breaks the rules of {@code TextRules}. */
+  TEXT_INVALID("domain.text.invalid"),
+  /** A namespaced key (operation type, action, input key) does not follow its grammar. */
+  KEY_MALFORMED("domain.key.malformed"),
+  /** An operation plan breaks a structural or policy rule (see {@code OperationPlan}). */
+  OPERATION_PLAN_INVALID("domain.operation.plan_invalid");
 
   private final String code;
 

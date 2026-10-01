@@ -51,47 +51,7 @@ public record DisplayName(String value) {
     return value;
   }
 
-  // Bidirectional embedding/override (U+202A..U+202E) and isolate (U+2066..U+2069) controls.
-  // Written numerically so no directionality character ever appears in source.
-  private static final int BIDI_EMBEDDING_FIRST = 0x202A;
-  private static final int BIDI_EMBEDDING_LAST = 0x202E;
-  private static final int BIDI_ISOLATE_FIRST = 0x2066;
-  private static final int BIDI_ISOLATE_LAST = 0x2069;
-
-  private static boolean isBidiControl(char c) {
-    return (c >= BIDI_EMBEDDING_FIRST && c <= BIDI_EMBEDDING_LAST)
-        || (c >= BIDI_ISOLATE_FIRST && c <= BIDI_ISOLATE_LAST);
-  }
-
   private static @Nullable String findProblem(String value) {
-    if (value.isEmpty()) {
-      return "empty";
-    }
-    for (int i = 0; i < value.length(); i++) {
-      char c = value.charAt(i);
-      if (Character.isHighSurrogate(c)) {
-        if (i + 1 >= value.length() || !Character.isLowSurrogate(value.charAt(i + 1))) {
-          return "unpaired surrogate";
-        }
-        i++;
-      } else if (Character.isLowSurrogate(c)) {
-        return "unpaired surrogate";
-      } else if (Character.isISOControl(c)) {
-        return "control character";
-      } else if (isBidiControl(c)) {
-        return "bidirectional control character";
-      }
-    }
-    int codePoints = value.codePointCount(0, value.length());
-    if (codePoints > MAX_CODE_POINTS) {
-      return "longer than " + MAX_CODE_POINTS + " code points";
-    }
-    if (Character.isWhitespace(value.codePointAt(0))
-        || Character.isSpaceChar(value.codePointAt(0))
-        || Character.isWhitespace(value.codePointBefore(value.length()))
-        || Character.isSpaceChar(value.codePointBefore(value.length()))) {
-      return "leading or trailing whitespace";
-    }
-    return null;
+    return TextRules.findProblem(value, MAX_CODE_POINTS);
   }
 }

@@ -45,8 +45,16 @@ public final class SidecarRoot {
   /** Directory holding in-progress transactions. */
   public static final String STAGING = ".staging";
 
+  /**
+   * Directory holding operation plans and journals: the one mutable area of the sidecar, written
+   * only through {@link OperationFileWriter}. Manifests never reference or stage anything in it,
+   * because manifest-referenced files are immutable.
+   */
+  public static final String OPERATIONS = "operations";
+
   private static final Set<String> RESERVED_TOP_LEVEL =
-      Set.of(MANIFEST, PREVIOUS_MANIFEST, LOCK, LOCK_OWNER, LOCK_OWNER + ".tmp", STAGING);
+      Set.of(
+          MANIFEST, PREVIOUS_MANIFEST, LOCK, LOCK_OWNER, LOCK_OWNER + ".tmp", STAGING, OPERATIONS);
 
   private final Path real;
 

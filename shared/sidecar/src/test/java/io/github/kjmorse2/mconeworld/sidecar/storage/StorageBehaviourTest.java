@@ -165,7 +165,8 @@ class StorageBehaviourTest {
               "manifest.previous.json",
               "writer.lock",
               "writer.owner.json",
-              ".staging/x")) {
+              ".staging/x",
+              "operations/x")) {
         SidecarTransaction tx = writer.begin(0L);
         assertCode(
             () -> tx.stage(SidecarPath.of(reserved), new ByteArrayInputStream(new byte[1]), 10),

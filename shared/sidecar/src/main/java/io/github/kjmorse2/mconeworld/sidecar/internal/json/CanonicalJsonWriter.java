@@ -28,6 +28,10 @@ import java.util.Map;
  *   <li>integers in minimal decimal form, so {@code -0} is written {@code 0}
  * </ul>
  *
+ * <p>{@link #writeCompact} writes the same canonical form without any whitespace, on one line and
+ * without a trailing LF: the form of one line of an append-only journal. Member order, string
+ * escaping, and numbers are identical in both forms.
+ *
  * <p>Output depends only on the value, never on locale, platform, or library version.
  */
 public final class CanonicalJsonWriter {
@@ -61,6 +65,19 @@ public final class CanonicalJsonWriter {
     return out.toString().getBytes(StandardCharsets.UTF_8);
   }
 
+  /**
+   * Returns the compact canonical UTF-8 bytes of {@code value}: no whitespace and no trailing LF.
+   * The result never contains an LF byte, because strings escape it.
+   */
+  public static byte[] writeCompact(JsonValue value) {
+    StringBuilder out = new StringBuilder();
+    append(out, value, COMPACT);
+    return out.toString().getBytes(StandardCharsets.UTF_8);
+  }
+
+  /** Indentation level that selects the compact form. */
+  private static final int COMPACT = -1;
+
   private static void append(StringBuilder out, JsonValue value, int indent) {
     switch (value) {
       case JsonObject o -> appendObject(out, o, indent);
@@ -79,6 +96,17 @@ public final class CanonicalJsonWriter {
     }
     List<Map.Entry<String, JsonValue>> members = new ArrayList<>(object.members().entrySet());
     members.sort(Map.Entry.comparingByKey(CODE_POINT_ORDER));
+    if (indent == COMPACT) {
+      out.append('{');
+      for (int i = 0; i < members.size(); i++) {
+        appendString(out, members.get(i).getKey());
+        out.append(':');
+        append(out, members.get(i).getValue(), COMPACT);
+        out.append(i + 1 < members.size() ? "," : "");
+      }
+      out.append('}');
+      return;
+    }
     out.append("{\n");
     for (int i = 0; i < members.size(); i++) {
       indent(out, indent + 1);
@@ -94,6 +122,15 @@ public final class CanonicalJsonWriter {
   private static void appendArray(StringBuilder out, JsonArray array, int indent) {
     if (array.elements().isEmpty()) {
       out.append("[]");
+      return;
+    }
+    if (indent == COMPACT) {
+      out.append('[');
+      for (int i = 0; i < array.elements().size(); i++) {
+        append(out, array.elements().get(i), COMPACT);
+        out.append(i + 1 < array.elements().size() ? "," : "");
+      }
+      out.append(']');
       return;
     }
     out.append("[\n");

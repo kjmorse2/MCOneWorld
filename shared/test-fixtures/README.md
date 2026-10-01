@@ -15,4 +15,9 @@ Artifact: `io.github.kjmorse2.mconeworld:mconeworld-shared-test-fixtures` · Pac
 
 **Forbidden:** platform dependencies. Never commit real user worlds, player data, server jars, or secrets.
 
-**Current contents:** `ModuleContract`. Every module's smoke test uses it to assert that the module's packages are `@NullMarked` and compiled to Java 21 bytecode.
+**Current contents:**
+
+- `ModuleContract`: every module's smoke test uses it to assert that the module's packages are `@NullMarked` and compiled to Java 21 bytecode.
+- `DomainFixtures`: deterministic ids and instants.
+- `ManifestFixtures`: the golden manifest.
+- `OperationFixtures`: plans, event sequences, and the golden `operation/v1/plan-full.json` and `journal-rolled-back.jsonl`, each with a `.meta`.

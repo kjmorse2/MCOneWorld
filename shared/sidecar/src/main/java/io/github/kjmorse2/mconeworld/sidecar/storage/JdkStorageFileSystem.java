@@ -11,6 +11,7 @@ import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -48,12 +49,27 @@ public final class JdkStorageFileSystem implements StorageFileSystem {
 
   @Override
   public WritableFile createNew(Path file) throws IOException {
-    FileChannel channel =
+    return writable(
         FileChannel.open(
             file,
             StandardOpenOption.CREATE_NEW,
             StandardOpenOption.WRITE,
-            LinkOption.NOFOLLOW_LINKS);
+            LinkOption.NOFOLLOW_LINKS));
+  }
+
+  @Override
+  public WritableFile openAppend(Path file) throws IOException {
+    return writable(
+        FileChannel.open(
+            file, StandardOpenOption.APPEND, StandardOpenOption.WRITE, LinkOption.NOFOLLOW_LINKS));
+  }
+
+  @Override
+  public long size(Path file) throws IOException {
+    return Files.readAttributes(file, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS).size();
+  }
+
+  private static WritableFile writable(FileChannel channel) {
     return new WritableFile() {
       @Override
       public void write(byte[] bytes, int offset, int length) throws IOException {

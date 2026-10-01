@@ -12,6 +12,7 @@
 ├── manifest.previous.json           the manifest that manifest.json replaced (last-known-good)
 ├── writer.lock                      permanent empty lock target; OS-locked by the writer
 ├── writer.owner.json                present only while a writer holds (or crashed holding) the lock
+├── operations/                      operation plans and journals: the only mutable area (operation-journal-v1.md)
 ├── .staging/                        present only while a transaction runs, or after an interruption
 │   └── <transaction-id>/
 │       ├── transaction.json         durable intent (§3)
@@ -29,6 +30,7 @@ Reserved names, which may not be staged or referenced:
 - `writer.owner.json`
 - `writer.owner.json.tmp`
 - `.staging` and anything under it
+- `operations` and anything under it (added in Prompt 07; written only through `OperationFileWriter`)
 
 Symbolic links are not allowed anywhere below the root. The root itself may be reached through a symlink.
 
@@ -103,11 +105,28 @@ This is the output of `SidecarStore.inspect()`, which is read-only. Apply it wit
 | `sidecar.recovery.aborted_cleanup_pending` | manifest = `baseManifest`, or the staging dir is completely empty | yes: remove orphans (targets unreferenced by the current manifest whose content still matches), then staging |
 | `sidecar.recovery.outcome_unknown` | manifest matches neither | **no** |
 | `sidecar.recovery.unexplained_staging` | the entry has content but no readable, matching record | **no, never deleted** |
-| `sidecar.recovery.manifest_unreadable` | `manifest.json` is missing, torn, or invalid | **no**. `manifest.previous.json` can be read with `readPreviousManifest()`. Restoring it is a deliberate operator or operation-journal action (Prompt 07). |
+| `sidecar.recovery.manifest_unreadable` | `manifest.json` is missing, torn, or invalid | **no**. `manifest.previous.json` can be read with `readPreviousManifest()`. Restoring it is a deliberate operator action. Nothing restores it automatically; a future restore operation would be planned and journaled like any other (operation-journal-v1.md). |
 
 The report also carries the lock status, so a provably stale lock is visible.
 
-## 6. Error codes
+## 6. The `operations/` area
+
+Plans and journals change independently of the manifest, so they cannot be immutable manifest-referenced files. They use three durable primitives instead. All three:
+
+- verify the writer lock first
+- take paths relative to `operations/`
+- apply the symlink policy
+- return only once the data is synced
+
+| Primitive | Behaviour |
+|---|---|
+| `writeOnce(path, bytes)` | Writes `<name>.tmp`, fsyncs it, renames it atomically, then syncs the directory. Missing parents are created and synced. It is idempotent for identical content (returns `false`). Different content fails with `DATA_FILE_CONFLICT`. A leftover `<name>.tmp` fails with `RECOVERY_REQUIRED` and is **never deleted** automatically. A temporary file created by the failing call itself is removed. |
+| `append(path, expectedSize, bytes)` | The file must hold exactly `expectedSize` bytes (`BASE_CHANGED` otherwise); a missing file counts as 0 and is created. It appends, then fsyncs. |
+| `replace(path, expectedChecksum, bytes)` | The current content must have exactly that checksum (`BASE_CHANGED`). Then temporary file, fsync, atomic rename, and directory sync. It is used only to discard a torn journal tail explicitly. |
+
+Read access, `SidecarStore.operationFiles()`, is read-only like every other read.
+
+## 7. Error codes
 
 `StorageException.code()` is one of:
 
@@ -131,7 +150,7 @@ The report also carries the lock status, so a provably stale lock is visible.
 
 Every code after the first has the `sidecar.storage.` prefix.
 
-## 7. Platform support and limitations
+## 8. Platform support and limitations
 
 - **Tested:** Linux, ext4, local disk, JDK 25.
 - **Expected but untested:** macOS (APFS) and other POSIX local filesystems.

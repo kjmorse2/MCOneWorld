@@ -185,8 +185,45 @@ try (SidecarWriter w = store.openWriter(owner, clock, StaleLockPolicy.REFUSE)) {
 - **Loss is refused** (`UNSUPPORTED_DATA`), never hidden in warnings.
 - `MigrationRegistry.builtIn()` is **empty**: 1.0 is the first released schema. v0.9 is a synthetic, test-only fixture.
 
+### `domain.operation` and `sidecar.operation`: plans and journals (Prompt 07)
+
+The format is [`docs/formats/operation-journal-v1.md`](../docs/formats/operation-journal-v1.md), and the policy is ADR 0006.
+
+```java
+OperationPlan plan = new OperationPlan(id, type, createdAt, tool, archiveId, ImpactClass.DESTRUCTIVE,
+    targets, preconditions, new BackupRequirement.NewBackup(), steps, validations, rollback);
+OperationJournals journals = OperationJournals.of(store, clock);
+OperationStatus status = journals.inspect(id);                // read-only: integrity + recommendation
+try (SidecarWriter w = store.openWriter(owner, clock, StaleLockPolicy.REFUSE)) {
+  OperationJournal j = journals.create(w, plan);              // plan.json + PLAN_RECORDED, durable; idempotent
+  long next = j.progress().nextSequence();
+  JournalAck ack = j.append(next, new JournalEvent.StepStarted(0, 1)); // returns only once fsynced
+  MutationPermit permit = ack.permit();                       // only STEP_STARTED / ROLLBACK_STARTED get one
+  // ...the platform performs step 0, holding the permit, then appends STEP_COMPLETED
+}
+```
+
+- **Rules live in the domain.**
+  - `OperationTransitions` is the legal (state, event) table.
+  - `OperationProgress` replays a journal against its plan and enforces every guard: sequence, backup, approved digest, preconditions, step order, retry-safety, and attempt bounds.
+  - `recommend()` derives a `RecoveryRecommendation`.
+- **Never auto-resume.** Every recommendation except `NONE` has `requiresConfirmation`. Shared code performs no step.
+- **Plan digest** = SHA-256 of the canonical encoding of the whole plan. A changed plan is refused: `APPLY_STARTED` carries the approved digest, and `inspect` reports `PLAN_CHANGED`.
+- **Preconditions** cover the manifest revision and checksum, input checksums, and facts, all by logical `InputKey` (for example `world:level.dat`), never host paths. `PreconditionSnapshot.differences(observed)` lists every change.
+- **Duplicates.** Re-sending exactly the last event is idempotent (`alreadyRecorded`, **no permit**). Anything else out of sequence is `sequence_conflict`, and rule violations are `event_rejected` with the domain issues in `details()`.
+- **Integrity:**
+  - An unterminated final fragment is `TORN_TAIL`: never acknowledged, so the recommendation comes from the complete entries. Discard it only with `discardTornTail`, which preserves it first.
+  - Any bad terminated line is `CORRUPT`, which means `MANUAL_INSPECTION`.
+  - Newer-minor files are readable but not writable or executable.
+- **Mutable area.** Files live under `operations/<id>/`, which is reserved and never referenced by the manifest. They are written only through `SidecarWriter.operationFiles()`: `writeOnce`, `append`, and `replace`.
+
 Test support in `shared:test-fixtures`:
 
+- `OperationFixtures`:
+  - `fullPlan()` uses every target kind
+  - `plan(retrySafe…, checks)`
+  - `toApplying`, `toCompleted`, `toRolledBack`, and `goldenJournalEvents`
+  - golden files `GOLDEN_PLAN_V1` and `GOLDEN_JOURNAL_V1`, each with a `.meta`
 - `ManifestFixtures.fullDocument()`: every v1 member
 - `ManifestFixtures.GOLDEN_FULL_V1`: the golden bytes plus a `.meta` file with the format version and SHA-256
 

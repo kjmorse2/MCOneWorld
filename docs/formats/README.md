@@ -8,8 +8,8 @@ Each MCOneWorld format is versioned independently of the application release (`s
 | Sidecar storage layout, `writer.owner.json`, `transaction.json` | 1 | [sidecar-storage-v1.md](sidecar-storage-v1.md) | Prompt 05 |
 | Migration report (`reports/migrations/<runId>.json`) | 1 | [ADR 0005](../decisions/0005-manifest-migration-guarantees.md) | Prompt 06 |
 | Manifest 0.9 (**synthetic test fixture, never released**) | 0.9 | [manifest-v0.9-synthetic.md](manifest-v0.9-synthetic.md) | Prompt 06 |
+| Operation plan (`operations/<id>/plan.json`) and journal (`journal.jsonl`) | 1.0 | [operation-journal-v1.md](operation-journal-v1.md), examples [plan](examples/operation-plan-v1-example.json), [journal](examples/operation-journal-v1-example.jsonl) | Prompt 07 |
 | Chunk index | — | *pending* | Prompts 08–09 |
-| Operation plan / journal | — | *pending* | Prompt 07 |
 | Client/server protocol | — | *pending* | Prompt 10 |
 
 ## Schema questions raised in Prompt 03, resolved in Prompt 04
