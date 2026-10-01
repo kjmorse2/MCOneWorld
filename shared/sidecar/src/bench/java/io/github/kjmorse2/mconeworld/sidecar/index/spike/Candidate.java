@@ -11,6 +11,8 @@ public enum Candidate {
   REGION_FILES("c1-region-files"),
   /** C1 with region blocks appended to segment files. */
   REGION_SEGMENTS("c1-region-segments"),
+  /** C1 blocks as checkpoints plus an append-only delta log (measured after C1-segments). */
+  REGION_LOG("c1-region-log"),
   /** C2: SQLite. */
   SQLITE("c2-sqlite"),
   /** C3: Roaring bitmaps over C1 segment blocks. */
@@ -35,6 +37,7 @@ public enum Candidate {
       case REGION_FILES ->
           RegionStoreIndex.open(directory, RegionStoreIndex.Layout.FILE_PER_REGION);
       case REGION_SEGMENTS -> RegionStoreIndex.open(directory, RegionStoreIndex.Layout.SEGMENTS);
+      case REGION_LOG -> RegionLogIndex.open(directory);
       case SQLITE -> SqliteIndex.open(directory);
       case ROARING -> RoaringIndex.open(directory);
       case MVSTORE -> MvStoreIndex.open(directory);

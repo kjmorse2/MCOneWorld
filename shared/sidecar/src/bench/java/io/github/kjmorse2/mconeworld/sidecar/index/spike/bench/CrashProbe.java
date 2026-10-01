@@ -10,6 +10,7 @@ import io.github.kjmorse2.mconeworld.fixtures.index.SyntheticWorld;
 import io.github.kjmorse2.mconeworld.sidecar.index.ChunkIndexReader;
 import io.github.kjmorse2.mconeworld.sidecar.index.ChunkMutation;
 import io.github.kjmorse2.mconeworld.sidecar.index.spike.Candidate;
+import io.github.kjmorse2.mconeworld.sidecar.index.spike.RegionLogIndex;
 import io.github.kjmorse2.mconeworld.sidecar.index.spike.SpikeIndex;
 import io.github.kjmorse2.mconeworld.sidecar.index.spike.Workload;
 import java.io.BufferedReader;
@@ -192,6 +193,9 @@ public final class CrashProbe {
         append(log, "INTENT " + k + " " + digest + "\n");
         Workload.applyAll(batch, index);
         append(log, "DONE " + k + "\n");
+        if (index instanceof RegionLogIndex regionLog && k % 5 == 0) {
+          regionLog.checkpoint(); // kills also land inside checkpoints; state must not change
+        }
       }
     }
   }

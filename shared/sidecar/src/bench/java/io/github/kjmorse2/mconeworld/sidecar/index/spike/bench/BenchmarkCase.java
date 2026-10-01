@@ -16,6 +16,7 @@ import io.github.kjmorse2.mconeworld.sidecar.index.ChunkMutation;
 import io.github.kjmorse2.mconeworld.sidecar.index.ChunkQuery;
 import io.github.kjmorse2.mconeworld.sidecar.index.SeasonFilter;
 import io.github.kjmorse2.mconeworld.sidecar.index.spike.Candidate;
+import io.github.kjmorse2.mconeworld.sidecar.index.spike.RegionLogIndex;
 import io.github.kjmorse2.mconeworld.sidecar.index.spike.SpikeIndex;
 import io.github.kjmorse2.mconeworld.sidecar.index.spike.Workload;
 import java.io.IOException;
@@ -143,6 +144,11 @@ public final class BenchmarkCase {
         fullScan(reader);
       }
       updates(index, updates);
+      if (index instanceof RegionLogIndex log) {
+        start = System.nanoTime();
+        log.checkpoint();
+        emit.metric("checkpoint.seconds", "s", (System.nanoTime() - start) / 1e9);
+      }
       // Memory the open index keeps (caches, catalogs, bitmaps) after every workload above.
       emit.metric("heap.indexRetained", "bytes", Math.max(0, liveHeapAfterGc() - baseline));
       start = System.nanoTime();

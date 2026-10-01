@@ -90,7 +90,25 @@ public final class Summarize {
     }
   }
 
+  /** Bytes written to disk per applied update mutation (after − before, over 25 000 mutations). */
+  private void derive() {
+    for (var byDataset : data.values()) {
+      for (var metrics : byDataset.values()) {
+        Map<String, String> before = metrics.get("disk.bytes");
+        Map<String, String> after = metrics.get("disk.afterUpdates.bytes");
+        if (before != null && after != null) {
+          double growth =
+              (Double.parseDouble(after.getOrDefault("value", "0"))
+                      - Double.parseDouble(before.getOrDefault("value", "0")))
+                  / 25_000.0;
+          metrics.put("disk.growthPerMutation", Map.of("value", Double.toString(growth)));
+        }
+      }
+    }
+  }
+
   private String render() {
+    derive();
     StringBuilder out = new StringBuilder();
     for (Map<String, String> env : environments) {
       out.append("- Run `")
@@ -286,6 +304,8 @@ public final class Summarize {
         {"full scan", "scan.full", "value", "rate"},
         {"envelope max", "envelope.season", "max", "ns"},
         {"commit p50/p99", "update.batch1000", "p50", "lat"},
+        {"growth/update", "disk.growthPerMutation", "value", "1"},
+        {"checkpoint", "checkpoint.seconds", "value", "s"},
         {"verify", "verify.seconds", "value", "s"},
         {"index heap", "heap.indexRetained", "value", "mib"},
         {"RSS peak", "rss.peak", "value", "mib"},

@@ -63,7 +63,10 @@ public class RegionStoreIndex extends SpikeIndexBase {
   }
 
   static final long SEGMENT_ROLL_BYTES = 64L << 20;
-  private static final int CACHE_RECORDS = 1 << 18;
+
+  /** Heap budget for cached blocks (inflated bytes plus offsets), sized for a 256 MiB heap. */
+  private static final long CACHE_BYTES = 48L << 20;
+
   private static final int OPEN_CHANNELS = 64;
 
   final Path directory;
@@ -72,7 +75,7 @@ public class RegionStoreIndex extends SpikeIndexBase {
   private volatile Catalog catalog;
 
   private final Map<Long, RecordCodec.Block> blockCache = new LinkedHashMap<>(256, 0.75f, true);
-  private long cachedRecords;
+  private long cachedBytes;
   private final Map<Long, FileChannel> channels = new LinkedHashMap<>(64, 0.75f, true);
 
   private final TreeMap<Long, Integer> readersByGeneration = new TreeMap<>();
@@ -169,11 +172,11 @@ public class RegionStoreIndex extends SpikeIndexBase {
               + entry.count);
     }
     synchronized (blockCache) {
-      blockCache.put(cacheKey, block);
-      cachedRecords += block.count;
+      RecordCodec.Block previous = blockCache.put(cacheKey, block);
+      cachedBytes += block.retainedBytes() - (previous == null ? 0 : previous.retainedBytes());
       Iterator<RecordCodec.Block> it = blockCache.values().iterator();
-      while (cachedRecords > CACHE_RECORDS && it.hasNext()) {
-        cachedRecords -= it.next().count;
+      while (cachedBytes > CACHE_BYTES && it.hasNext()) {
+        cachedBytes -= it.next().retainedBytes();
         it.remove();
       }
     }

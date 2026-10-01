@@ -56,34 +56,68 @@ final class RecordCodec {
 
   private RecordCodec() {}
 
-  /** A decoded region: up to 1024 records indexed by local index. Treat as immutable. */
+  /**
+   * A verified region block kept in its compact form: the inflated record bytes plus an offset per
+   * local index. A record is decoded only when asked for, so a cached block costs about its raw
+   * size rather than the size of 1 024 record objects. Immutable.
+   */
   static final class Block {
     final DimensionKey dimension;
     final int regionX;
     final int regionZ;
-    private final @Nullable ChunkProvenance[] records;
     final int count;
+    private final byte[] raw;
+    private final int[] offsets; // -1 where absent
+    private final SeasonId[] seasons;
+    private final long baseSecond;
 
     Block(
         DimensionKey dimension,
         int regionX,
         int regionZ,
-        @Nullable ChunkProvenance[] records,
-        int count) {
+        int count,
+        byte[] raw,
+        int[] offsets,
+        SeasonId[] seasons,
+        long baseSecond) {
       this.dimension = dimension;
       this.regionX = regionX;
       this.regionZ = regionZ;
-      this.records = records;
       this.count = count;
+      this.raw = raw;
+      this.offsets = offsets;
+      this.seasons = seasons;
+      this.baseSecond = baseSecond;
     }
 
-    @Nullable ChunkProvenance at(int localIndex) {
-      return records[localIndex];
+    /** The record at {@code localIndex}, decoded now, or {@code null} if absent. */
+    @Nullable ChunkProvenance at(int localIndex) throws ChunkIndexException {
+      int offset = offsets[localIndex];
+      if (offset < 0) {
+        return null;
+      }
+      ChunkPosition chunk =
+          new ChunkPosition(
+              dimension, (regionX << 5) | (localIndex & 31), (regionZ << 5) | (localIndex >>> 5));
+      return readRecord(
+          new ByteReader(raw, offset, raw.length - offset, "record " + chunk),
+          chunk,
+          k -> k < seasons.length ? seasons[k] : null,
+          baseSecond);
     }
 
-    /** A mutable copy of the records, for building the next version of this region. */
-    @Nullable ChunkProvenance[] copyRecords() {
-      return records.clone();
+    /** Every record decoded, indexed by local index, for building the next version. */
+    @Nullable ChunkProvenance[] copyRecords() throws ChunkIndexException {
+      @Nullable ChunkProvenance[] out = new ChunkProvenance[1024];
+      for (int i = 0; i < 1024; i++) {
+        out[i] = at(i);
+      }
+      return out;
+    }
+
+    /** Approximate heap held by this block while cached. */
+    long retainedBytes() {
+      return 96L + raw.length + 4L * offsets.length + 48L * seasons.length;
     }
   }
 
@@ -239,21 +273,52 @@ final class RecordCodec {
     int deflatedLength = in.varInt(in.remaining());
     byte[] raw = inflate(in.bytes(deflatedLength), rawLength, what);
     ByteReader records = new ByteReader(raw, 0, raw.length, what);
-    @Nullable ChunkProvenance[] out = new ChunkProvenance[1024];
+    int[] offsets = new int[1024];
     int count = 0;
-    int baseX = regionX << 5;
-    int baseZ = regionZ << 5;
     for (int i = 0; i < 1024; i++) {
       if ((presence[i >>> 3] & (1 << (i & 7))) != 0) {
-        ChunkPosition chunk = new ChunkPosition(dimension, baseX | (i & 31), baseZ | (i >>> 5));
-        out[i] = readRecord(records, chunk, k -> k < seasons.length ? seasons[k] : null, base);
+        offsets[i] = records.position();
+        skipRecord(records, seasons.length);
         count++;
+      } else {
+        offsets[i] = -1;
       }
     }
     if (records.remaining() != 0) {
       throw SpikeCodes.corrupt(what + ": trailing record bytes");
     }
-    return new Block(dimension, regionX, regionZ, out, count);
+    return new Block(dimension, regionX, regionZ, count, raw, offsets, seasons, base);
+  }
+
+  /**
+   * Steps over one record, checking every bound that decoding would check, without allocating.
+   * Decoding the record later can then fail only on cross-field rules (duplicate seasons).
+   */
+  private static void skipRecord(ByteReader in, int seasonCount) throws ChunkIndexException {
+    int flags = in.u8();
+    if ((flags & ~3) != 0) {
+      throw SpikeCodes.corrupt("record flags " + flags);
+    }
+    if ((flags & 1) == 0) {
+      seasonIndex(in, seasonCount);
+    }
+    in.zigZag();
+    in.varInt(999_999_999);
+    EvidenceCodes.decode(in.u8());
+    int activity = in.varInt(seasonCount);
+    for (int a = 0; a < activity; a++) {
+      seasonIndex(in, seasonCount);
+      in.zigZag();
+      in.varInt(999_999_999);
+      EvidenceCodes.decode(in.u8());
+    }
+  }
+
+  private static void seasonIndex(ByteReader in, int seasonCount) throws ChunkIndexException {
+    if (seasonCount == 0) {
+      throw SpikeCodes.corrupt("season index without a dictionary");
+    }
+    in.varInt(seasonCount - 1);
   }
 
   // ---- helpers -------------------------------------------------------------------------------

@@ -21,3 +21,8 @@ Artifact: `io.github.kjmorse2.mconeworld:mconeworld-shared-test-fixtures` · Pac
 - `DomainFixtures`: deterministic ids and instants.
 - `ManifestFixtures`: the golden manifest.
 - `OperationFixtures`: plans, event sequences, and the golden `operation/v1/plan-full.json` and `journal-rolled-back.jsonl`, each with a `.meta`.
+- `fixtures.index` (Prompt 08):
+  - `ReferenceChunkIndex`: the deliberately simple, in-memory `ChunkIndex`. It is the semantic reference, so never optimize it.
+  - `ChunkIndexDifferential`: streams any implementation against the reference.
+  - `ChunkDatasets` and `SyntheticWorld`: deterministic, seed-generated benchmark and test worlds, from `friend-server` to the 9.5-million-record `millions`. They are streamed one region at a time and never committed.
+  - `ChunkRecordText`: canonical record lines and whole-index digests.

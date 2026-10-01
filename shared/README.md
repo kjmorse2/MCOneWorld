@@ -229,6 +229,28 @@ Test support in `shared:test-fixtures`:
 
 `DomainFixtures` provides deterministic ids (`seasonId(n)`, …), `instant(seconds)`, `overworld(x, y, z)`, and `season(n)…build()`.
 
+### `sidecar.index`: the chunk-index contract (Prompt 08, **API only**)
+
+There is **no persistent implementation yet.** The encoding is proposed in ADR 0007 (**Proposed**, awaiting owner review). Don't persist chunk provenance until Prompt 09 implements the accepted design.
+
+| Type | Contract |
+|---|---|
+| `ChunkIndex` | `reader()` returns a snapshot; `begin()` opens the single write batch. `close()` invalidates everything it handed out. |
+| `ChunkIndexReader` | A snapshot of the state committed when it was opened. Methods: `find`, `contains`, `scan(query)` returning a cursor, `count`, `envelope` (a derived summary, never membership), `dimensions()`. One thread at a time. |
+| `ChunkCursor` | Forward-only, in `ChunkOrder`. `next()` returns `null` at the end. The caller closes it. |
+| `ChunkIndexBatch` | Atomic: `apply(mutation)` in order, then `commit()`. A rejected mutation **poisons** the batch, which can then only be closed. |
+| `ChunkMutation` | `ObserveFirst` (first observation wins), `RecordActivity` and `SetProtection` (both need an existing record, otherwise `record_absent`), `Replace`, `Remove`. Their semantics are defined once, in `applyTo`. |
+| `ChunkQuery` | One dimension, plus an optional rectangle, a `SeasonFilter` (`any`, `legacy`, `firstObservedIn`, `activeIn`, `touchedBy`), and a `ProtectionFilter` (explicit per-chunk protection only, so check `ProtectedRegion`s yourself). Page with `after(lastPosition)`. `matches(record)` defines the result set. |
+| `ChunkOrder` | Region-major scan order. `key(x, z)` is a lossless 64-bit key over the full `int` range; `Long.MIN_VALUE` is a real key, so never use it as a sentinel. |
+| `ChunkIndexException`, `ChunkIndexIssueCodes` | Coded failures. Misuse, such as a closed reader or a second batch, is an `IllegalStateException`. |
+
+Test support in `shared:test-fixtures` (package `fixtures.index`):
+
+- `ReferenceChunkIndex`: the obviously correct in-memory model
+- `ChunkIndexDifferential.assertSameAnswers(expected, actual, queries, probes, pageSize)` and `standardQueries`
+- `ChunkDatasets.named(name, scale)`: the seven deterministic benchmark worlds, streamed region by region
+- `SyntheticWorld` and `ChunkRecordText`
+
 ## Building
 
 ```bash

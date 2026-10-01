@@ -72,6 +72,16 @@ class CandidateDifferentialTest {
     }
     compare(world, reference, index, 12);
     index.verify();
+    if (index instanceof RegionLogIndex log) {
+      log.checkpoint(); // the overlay folds into blocks without changing any answer
+      compare(world, reference, index, 14);
+      Workload.applyAll(
+          Workload.updateBatch(
+              world, random, 300, season, Instant.parse("2030-02-01T00:00:00Z"), removed),
+          reference,
+          index);
+      index.verify();
+    }
     index.close();
 
     try (SpikeIndex reopened = candidate.open(directory)) {
@@ -139,6 +149,43 @@ class CandidateDifferentialTest {
       ChunkIndexReader reader = index.reader();
       reader.close();
       assertThatThrownBy(() -> reader.find(victim)).isInstanceOf(IllegalStateException.class);
+    }
+  }
+
+  @org.junit.jupiter.api.Test
+  void deltaLogIgnoresATornTailAndNeverAppendsAfterIt() throws Exception {
+    SyntheticWorld world = ChunkDatasets.named("friend-server", 0.2);
+    Path directory = temp.resolve("torn");
+    ReferenceChunkIndex reference = new ReferenceChunkIndex();
+    SeasonId season = SeasonId.of(UUID.fromString("00000000-0000-4000-8000-0000000000ab"));
+    SplittableRandom random = new SplittableRandom(5);
+    Set<ChunkPosition> removed = new HashSet<>();
+    Instant at = Instant.parse("2030-03-01T00:00:00Z");
+    try (RegionLogIndex index = RegionLogIndex.open(directory)) {
+      Workload.bulkLoad(world, 400, reference, index);
+      Workload.applyAll(
+          Workload.updateBatch(world, random, 50, season, at, removed), reference, index);
+    }
+    Path log;
+    try (var files = java.nio.file.Files.list(directory)) {
+      log =
+          files
+              .filter(p -> p.getFileName().toString().startsWith("deltas-"))
+              .findFirst()
+              .orElseThrow();
+    }
+    // A crash mid-append leaves a partial frame: length says 1 000 bytes, only 3 follow.
+    java.nio.file.Files.write(
+        log, new byte[] {0, 0, 3, (byte) 0xE8, 1, 2, 3}, java.nio.file.StandardOpenOption.APPEND);
+    try (RegionLogIndex index = RegionLogIndex.open(directory)) {
+      compare(world, reference, index, 21); // the torn frame was never acknowledged
+      Workload.applyAll(
+          Workload.updateBatch(world, random, 50, season, at, removed), reference, index);
+      compare(world, reference, index, 22);
+      index.verify();
+    }
+    try (RegionLogIndex index = RegionLogIndex.open(directory)) {
+      compare(world, reference, index, 23);
     }
   }
 }
