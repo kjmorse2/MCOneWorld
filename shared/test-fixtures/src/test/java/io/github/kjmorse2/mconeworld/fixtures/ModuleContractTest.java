@@ -27,6 +27,7 @@ class ModuleContractTest {
   @Test
   void fixturesPackageSatisfiesTheSharedContract() {
     ModuleContract.assertSharedPackageContract("io.github.kjmorse2.mconeworld.fixtures");
+    ModuleContract.assertSharedPackageContract("io.github.kjmorse2.mconeworld.fixtures.index");
   }
 
   @Test
