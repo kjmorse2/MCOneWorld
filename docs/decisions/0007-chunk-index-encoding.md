@@ -1,12 +1,6 @@
 # ADR 0007: Chunk-index encoding
 
-- Status: **Proposed**, 2026-09-30. Prompt 08 is a design gate. This ADR may be accepted **only by the project owner**, after reviewing:
-  - the dependency and licensing consequences (§6.1)
-  - the benchmark evidence (§4)
-  - the backup and corruption behaviour (§7)
-  - the migration implications (§8)
-
-  No production chunk-index code may be written before it is accepted (Prompt 09).
+- Status: **Accepted**, 2026-10-01, by the project owner, who reviewed the Prompt 08 evidence and decided D1–D4 (§9) as recommended. It was Proposed on 2026-09-30. Prompt 09 implements it.
 - Milestone: Prompt 08
 - Evidence:
   - [`docs/benchmarks/chunk-index/`](../benchmarks/chunk-index/README.md): budgets committed before measuring, raw results, and the summary
@@ -219,19 +213,19 @@ The spike's dependencies are on the `bench` classpath only. They are never packa
 
 ## 9. Owner decisions requested
 
-| # | Decision | Recommendation |
-|---|---|---|
-| D1 | Accept C1-log as the chunk-index encoding (this ADR) | Accept |
-| D2 | Accept that a mutable `chunk-index/` area is referenced by the manifest without a checksum, reopening the Prompt 04 "indexes are checksummed `files`" resolution | Accept. Pinning the generation gives operations the same change detection. |
-| D3 | Accept B4 (uniform lookups at 9.5 M records) as an open target, to be met by per-row compression in Prompt 09, rather than a blocker | Accept |
-| D4 | Remove the spike dependencies and candidates in Prompt 09, keeping the harness | Accept |
+| # | Decision | Recommendation | Owner decision (2026-10-01) |
+|---|---|---|---|
+| D1 | Accept C1-log as the chunk-index encoding (this ADR) | Accept | **Accepted** |
+| D2 | Accept that a mutable `chunk-index/` area is referenced by the manifest without a checksum, reopening the Prompt 04 "indexes are checksummed `files`" resolution | Accept. Pinning the generation gives operations the same change detection. | **Allowed** |
+| D3 | Accept B4 (uniform lookups at 9.5 M records) as an open target, to be met by per-row compression in Prompt 09, rather than a blocker | Accept | **Allowed** |
+| D4 | Remove the spike dependencies and candidates in Prompt 09, keeping the harness | Accept | **Yes** |
 
 ## 10. Consequences
 
 - MCOneWorld owns a binary format and its corruption handling, so the test plan's exhaustive corruption, truncation, and fault-injection suites become mandatory in Prompt 09.
 - Paper's index writer must checkpoint periodically, off the main thread. A checkpoint folding 25 000 mutations into 1 M records took 0.8–1.5 s, and on 9.5 M records 18.5 s. 25 000 uniformly scattered mutations touched nearly every one of 16 000 regions, rewriting about 150 MB. Localized updates touch far fewer regions, but Prompt 09 must make checkpoint and compaction scheduling explicit and measured.
 - Readers pay for un-checkpointed mutations: a lookup of a logged chunk folds its mutations, and scans merge the log. That cost is bounded by the 100 000-mutation checkpoint threshold.
-- Root §9's "compact chunk-index encoding" decision is proposed here and remains **undecided** until the owner accepts.
+- Root §9's "compact chunk-index encoding" decision is made by this ADR.
 
 ## 11. Testing
 

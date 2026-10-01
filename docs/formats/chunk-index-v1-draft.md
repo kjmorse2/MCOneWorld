@@ -1,6 +1,6 @@
 # Chunk index, version 1: **DRAFT** (not normative)
 
-- Status: **Draft**. This is the proposal attached to [ADR 0007](../decisions/0007-chunk-index-encoding.md), which is **Proposed**. Nothing may write this format until the owner accepts ADR 0007. Prompt 09 then turns this draft into the normative `chunk-index-v1.md`, and may change details where the implementation or its tests show a need. Any change to the commit path must be re-measured with the Prompt 08 harness.
+- Status: **Draft**, accepted in principle by [ADR 0007](../decisions/0007-chunk-index-encoding.md) on 2026-10-01. Prompt 09 turns it into the normative `chunk-index-v1.md`, which supersedes this file, and may change details where the implementation or its tests show a need. Any change to the commit path is re-measured with the Prompt 08 harness.
 - Format name: `mconeworld-chunk-index`, version `1.0`
 - Contract: the `sidecar.index` API (`ChunkIndex`, `ChunkMutation`, `ChunkQuery`, `ChunkOrder`). This format stores exactly what `ChunkProvenance` holds, and nothing that can't be derived from it.
 - Measured as: the spike candidate `c1-region-log` (`RegionLogIndex` over `RegionStoreIndex` with segment layout). The spike's files have no format-version headers; this draft adds them (§3).

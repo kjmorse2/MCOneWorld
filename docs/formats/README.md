@@ -16,7 +16,7 @@ Each MCOneWorld format is versioned independently of the application release (`s
 
 - **Backup location.** *Resolved:* each manifest backup entry has a required `path` under `backups/`. The domain `BackupRecord` stays location-free.
 - **Season envelopes.** *Resolved:* they are not stored in manifest 1.0. They are derived from the chunk index, and a later minor version may add a cache.
-- **Provenance storage.** *Resolved:* provenance lives in chunk indexes, which are referenced through `files` (role `chunk-index`). **Reopened by ADR 0007 (Proposed):** the recommended index is a mutable, reserved `chunk-index/` area with its own commit point, so the manifest would reference it by format and index id instead of by checksum. Nothing changes unless ADR 0007 is accepted.
+- **Provenance storage.** *Resolved:* provenance lives in chunk indexes, which are referenced through `files` (role `chunk-index`). **Superseded by ADR 0007 (Accepted, owner decision D2):** the index is a mutable, reserved `chunk-index/` area with its own commit point. The manifest references it by format and index id, not by checksum, and operations pin its generation instead.
 - **Timestamp precision.** *Resolved:* shortest exact ISO-8601 UTC (`ISO_INSTANT`), so nothing is silently truncated.
 - **Nullable vs absent.** *Resolved:* always present, with JSON `null` meaning none. Absent is an error.
 - **Enum persistence.** *Resolved:* constant names are used verbatim, and new constants require a major version.
