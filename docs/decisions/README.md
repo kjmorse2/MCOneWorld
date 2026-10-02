@@ -13,5 +13,6 @@ Status values: `Proposed` → `Accepted` | `Rejected` | `Superseded by NNNN`. On
 | [0005](0005-manifest-migration-guarantees.md) | Manifest schema migration guarantees | Accepted |
 | [0006](0006-operation-plans-and-journals.md) | Operation plans and durable journals | Accepted |
 | [0007](0007-chunk-index-encoding.md) | Chunk-index encoding | Accepted (2026-10-01) |
+| [0008](0008-client-protocol.md) | Client/server protocol, version 1 | Accepted (2026-10-01, delegated) |
 
 Decisions reserved for later milestones and **not** decided here: the offline tool's relationship to MCA Selector (root §22), and the other deferred choices in root §22. The chunk-index encoding was decided by ADR 0007.

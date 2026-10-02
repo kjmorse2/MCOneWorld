@@ -6,5 +6,6 @@
 /shared/test-fixtures/src/main/resources/**/*.json  binary
 /shared/test-fixtures/src/main/resources/**/*.jsonl binary
 /shared/test-fixtures/src/main/resources/**/chunk-index/** binary
+/shared/test-fixtures/src/main/resources/**/protocol/**    binary
 /docs/formats/examples/*.json                       binary
 /docs/formats/examples/*.jsonl                      binary

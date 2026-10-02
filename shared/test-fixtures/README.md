@@ -28,3 +28,4 @@ Artifact: `io.github.kjmorse2.mconeworld:mconeworld-shared-test-fixtures` · Pac
   - `ChunkRecordText`: canonical record lines and whole-index digests.
   - `IndexWorkloads`: bulk loads in region order, and runtime-like update batches that never get rejected.
   - `ChunkIndexFixtures`: the golden chunk-index v1 files (`chunk-index/v1/`: catalog, segment, log, export, each with a `.meta`) and the recipe that writes them.
+- `fixtures.protocol` (Prompt 10): `ProtocolFixtures`, the seven golden protocol v1 vectors (`protocol/v1/*.bin`, each with a `.meta` naming channel, length, and SHA-256), their values, and `main`, which regenerates them for review.

@@ -1,0 +1,6 @@
+# Golden protocol vector (docs/formats/protocol-v1.md §8). Produced by ProtocolFixtures.main; reviewed against the specification before pinning.
+format=mconeworld-protocol
+version=1
+channel=mconeworld:hello
+length=6
+sha256=7051ecc1a9790222b2988eb7282318b43c7ec26eae9b269910137991b599aea7

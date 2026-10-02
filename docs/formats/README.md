@@ -10,7 +10,7 @@ Each MCOneWorld format is versioned independently of the application release (`s
 | Manifest 0.9 (**synthetic test fixture, never released**) | 0.9 | [manifest-v0.9-synthetic.md](manifest-v0.9-synthetic.md) | Prompt 06 |
 | Operation plan (`operations/<id>/plan.json`) and journal (`journal.jsonl`) | 1.0 | [operation-journal-v1.md](operation-journal-v1.md), examples [plan](examples/operation-plan-v1-example.json), [journal](examples/operation-journal-v1-example.jsonl) | Prompt 07 |
 | Chunk index (`chunk-index/`) and its export | 1.0 | [chunk-index-v1.md](chunk-index-v1.md); golden files in `shared:test-fixtures` (`fixtures/chunk-index/v1/`) | Prompt 09 (proposed in Prompt 08, ADR 0007) |
-| Client/server protocol | — | *pending* | Prompt 10 |
+| Client/server protocol (`mconeworld:hello`, `mconeworld:context`) | 1 | [protocol-v1.md](protocol-v1.md); golden vectors in `shared:test-fixtures` (`fixtures/protocol/v1/`) | Prompt 10 (ADR 0008) |
 
 ## Schema questions raised in Prompt 03, resolved in Prompt 04
 

@@ -5,4 +5,5 @@ plugins { id("mconeworld.shared-module") }
 dependencies {
     api(project(":shared:domain"))
     api(project(":shared:sidecar"))
+    api(project(":shared:protocol"))
 }

@@ -272,6 +272,16 @@ The format is [`docs/formats/chunk-index-v1.md`](../docs/formats/chunk-index-v1.
 - `ChunkRecordText`
 - `ChunkIndexFixtures`, the golden v1 index
 
+### `protocol`: the optional client protocol (Prompt 10)
+
+The format is [`docs/formats/protocol-v1.md`](../docs/formats/protocol-v1.md); the decision is ADR 0008. The details and an adapter checklist are in [`protocol/README.md`](protocol/README.md).
+
+- **Messages.** `HelloMessage` (client → server: versions, capabilities, optional client version, extensions) and `ContextMessage` (`Accepted` with an optional `SeasonContext`, or `Incompatible`). They are wire DTOs, never sidecar records.
+- **Negotiation.** `Negotiation.negotiate` picks the highest common version and the capabilities both sides list and that version defines. An incompatible peer is a result, not an exception. `checkReply` is the client's check.
+- **Codec.** `codec.ProtocolCodec` over `byte[]`/`ByteBuffer`. Encoding is deterministic and never fails on a valid value. Decoding accepts only canonical bytes, so `encode(decode(b)) == b`, and throws only `ProtocolException` with a `ProtocolIssueCodes` code.
+- **Reaction to bad input:** log the code and ignore the message. Never disconnect.
+- **Test support:** `fixtures.protocol.ProtocolFixtures`, the seven golden vectors.
+
 ## Building
 
 ```bash

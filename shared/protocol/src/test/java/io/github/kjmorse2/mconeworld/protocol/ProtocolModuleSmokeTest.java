@@ -11,4 +11,9 @@ class ProtocolModuleSmokeTest {
   void rootPackageSatisfiesTheSharedContract() {
     ModuleContract.assertSharedPackageContract("io.github.kjmorse2.mconeworld.protocol");
   }
+
+  @Test
+  void codecPackageSatisfiesTheSharedContract() {
+    ModuleContract.assertSharedPackageContract("io.github.kjmorse2.mconeworld.protocol.codec");
+  }
 }
