@@ -202,6 +202,19 @@ class ManifestRejectionTest {
     assertThat(e.issues().issues().get(0).location().path()).isEqualTo("$.seasons[2].colour");
   }
 
+  /** Regression (Prompt 11 audit): such names used to throw IllegalArgumentException. */
+  @ParameterizedTest
+  @ValueSource(strings = {"a-b", "1x", "", "_x", "x.y", "\\u005d"})
+  void unknownMembersWithAnyNameAreReportedNotThrown(String name) {
+    ManifestException e =
+        assertRejected(
+            goldenWith(
+                "\"status\": \"PLANNED\"", "\"status\": \"PLANNED\",\n      \"" + name + "\": 1"),
+            ManifestIssueCodes.UNKNOWN_MEMBER,
+            SCHEMA);
+    assertThat(e.issues().issues().get(0).location().path()).startsWith("$.seasons[2][");
+  }
+
   @ParameterizedTest
   @ValueSource(
       strings = {

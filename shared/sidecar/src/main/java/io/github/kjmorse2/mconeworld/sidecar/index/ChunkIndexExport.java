@@ -138,8 +138,9 @@ public final class ChunkIndexExport {
   }
 
   /**
-   * Streams the records of an export. Strict: unknown or missing members, wrong types, and invalid
-   * values are rejected with the line number.
+   * Streams the records of an export. Strict: unknown or missing members, wrong types, invalid
+   * values, non-canonical ids and times, and records out of order or repeated are rejected with the
+   * line number. Whatever this reader accepts, the writer could have written.
    */
   public static final class Reader {
     private static final JsonReader JSON =
@@ -149,6 +150,7 @@ public final class ChunkIndexExport {
     private final UUID indexId;
     private final long generation;
     private int lineNumber;
+    private @Nullable ChunkPosition previous;
 
     private Reader(InputStream in) throws IOException {
       this.in = Objects.requireNonNull(in, "in");
@@ -160,10 +162,14 @@ public final class ChunkIndexExport {
       if (!FORMAT.equals(string(header, "format")) || !VERSION.equals(string(header, "version"))) {
         throw invalid("not a " + FORMAT + " " + VERSION + " export");
       }
+      String id = string(header, "indexId");
       try {
-        this.indexId = UUID.fromString(string(header, "indexId"));
+        this.indexId = UUID.fromString(id);
       } catch (IllegalArgumentException e) {
         throw invalid("invalid indexId");
+      }
+      if (!indexId.toString().equals(id)) {
+        throw invalid("indexId is not in canonical form");
       }
       this.generation = number(header, "generation");
       number(header, "logBytes");
@@ -192,7 +198,7 @@ public final class ChunkIndexExport {
             new ChunkPosition(dimension, toInt(number(o, "x")), toInt(number(o, "z")));
         JsonObject f = object(o, "first");
         expect(f, Set.of("legacy", "season", "observedAt", "source", "confidence"));
-        Instant observedAt = Instant.parse(string(f, "observedAt"));
+        Instant observedAt = instant(string(f, "observedAt"));
         ProvenanceEvidence firstEvidence = evidence(f);
         boolean legacy = bool(f, "legacy");
         JsonValue season = f.get("season");
@@ -220,11 +226,17 @@ public final class ChunkIndexExport {
           activity.add(
               new SeasonActivity(
                   SeasonId.parse(string(a, "season")),
-                  Instant.parse(string(a, "lastObservedAt")),
+                  instant(string(a, "lastObservedAt")),
                   evidence(a)));
         }
-        return new ChunkProvenance(
-            chunk, first, activity, ChunkProtection.valueOf(string(o, "protection")));
+        ChunkProvenance record =
+            new ChunkProvenance(
+                chunk, first, activity, ChunkProtection.valueOf(string(o, "protection")));
+        if (previous != null && ChunkOrder.COMPARATOR.compare(previous, chunk) >= 0) {
+          throw invalid("records are not in strictly ascending order (" + chunk + ")");
+        }
+        previous = chunk;
+        return record;
       } catch (RuntimeException e) {
         if (e instanceof DateTimeParseException || e instanceof IllegalArgumentException) {
           throw invalid("invalid value: " + e.getMessage());
@@ -297,6 +309,15 @@ public final class ChunkIndexExport {
     private ProvenanceEvidence evidence(JsonObject o) throws IOException {
       return new ProvenanceEvidence(
           EvidenceSource.valueOf(string(o, "source")), Confidence.valueOf(string(o, "confidence")));
+    }
+
+    /** A time in the writer's form, {@link Instant#toString()}: UTC, shortest exact fraction. */
+    private Instant instant(String text) throws IOException {
+      Instant value = Instant.parse(text);
+      if (!value.toString().equals(text)) {
+        throw invalid("time " + text + " is not in canonical form");
+      }
+      return value;
     }
 
     private int toInt(long value) throws IOException {

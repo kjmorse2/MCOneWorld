@@ -154,7 +154,8 @@ public final class ProtocolFixtures {
 
   /** The pinned {@code .meta} text of {@code vector}. */
   public static String goldenMeta(Vector vector) {
-    return new String(resource(GOLDEN_DIRECTORY + vector.name() + ".meta"), StandardCharsets.UTF_8);
+    return new String(
+        resource(GOLDEN_DIRECTORY + vector.name() + ".bin.meta"), StandardCharsets.UTF_8);
   }
 
   /** The {@code .meta} text that describes {@code bytes} for {@code vector}. */
@@ -181,7 +182,7 @@ public final class ProtocolFixtures {
     for (Vector vector : vectors()) {
       byte[] bytes = encode(vector);
       Files.write(out.resolve(vector.name() + ".bin"), bytes);
-      Files.writeString(out.resolve(vector.name() + ".meta"), meta(vector, bytes));
+      Files.writeString(out.resolve(vector.name() + ".bin.meta"), meta(vector, bytes));
       System.out.println(vector.name() + " " + HexFormat.ofDelimiter(" ").formatHex(bytes));
     }
   }

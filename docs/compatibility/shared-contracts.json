@@ -1,0 +1,29 @@
+{
+  "comment": "Machine-readable summary of the shared project's persistent and wire contracts (Prompt 11). Kept equal to the code by SharedContractsTest; human-readable form in shared-release-audit.md and the format specs.",
+  "sharedLibrary": {
+    "group": "io.github.kjmorse2.mconeworld",
+    "candidate": "0.1.0-rc.1",
+    "buildVersion": "0.1.0-SNAPSHOT",
+    "javaRelease": 21,
+    "modules": ["mconeworld-shared-domain", "mconeworld-shared-sidecar", "mconeworld-shared-protocol", "mconeworld-shared-test-fixtures"],
+    "productionDependencies": ["org.jspecify:jspecify:1.0.1", "tools.jackson.core:jackson-core:3.2.3"]
+  },
+  "formats": [
+    {"name": "mconeworld-manifest", "version": "1.0", "spec": "docs/formats/manifest-v1.md"},
+    {"name": "mconeworld-writer-lock", "version": "1", "spec": "docs/formats/sidecar-storage-v1.md"},
+    {"name": "mconeworld-staging-transaction", "version": "1", "spec": "docs/formats/sidecar-storage-v1.md"},
+    {"name": "mconeworld-migration-report", "version": "1", "spec": "docs/decisions/0005-manifest-migration-guarantees.md"},
+    {"name": "mconeworld-operation-plan", "version": "1.0", "spec": "docs/formats/operation-journal-v1.md"},
+    {"name": "mconeworld-operation-journal", "version": "1.0", "spec": "docs/formats/operation-journal-v1.md"},
+    {"name": "mconeworld-chunk-index", "version": "1.0", "spec": "docs/formats/chunk-index-v1.md"},
+    {"name": "mconeworld-chunk-index-export", "version": "1.0", "spec": "docs/formats/chunk-index-v1.md"}
+  ],
+  "protocol": {
+    "spec": "docs/formats/protocol-v1.md",
+    "channels": ["mconeworld:context", "mconeworld:hello"],
+    "layout": 1,
+    "versions": {"min": 1, "max": 1},
+    "capabilities": {"mconeworld:season_context": 1}
+  },
+  "minecraftSupportClaims": []
+}

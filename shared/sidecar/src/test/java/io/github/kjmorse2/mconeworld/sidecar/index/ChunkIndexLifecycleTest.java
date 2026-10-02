@@ -279,6 +279,42 @@ class ChunkIndexLifecycleTest {
         .hasMessageContaining("no LF");
   }
 
+  /**
+   * Regression (Prompt 11 audit): the reader used to accept these, which the writer never emits.
+   */
+  @Test
+  void theExportReaderAcceptsOnlyWhatTheWriterWrites() throws IOException {
+    String golden = new String(goldenExport(), StandardCharsets.UTF_8);
+    read(golden);
+    List<String> lines = new java.util.ArrayList<>(List.of(golden.split("\n")));
+    String header = lines.get(0);
+    String uuid = header.replaceAll(".*\"indexId\":\"([^\"]+)\".*", "$1");
+    assertRejected(golden.replace(uuid, uuid.toUpperCase(java.util.Locale.ROOT)), "canonical");
+    String time = lines.get(1).replaceAll(".*\"observedAt\":\"([^\"]+)Z\".*", "$1");
+    assertRejected(golden.replace(time + "Z", time + ".000Z"), "canonical");
+    assertRejected(golden.replace(time + "Z", time + "+00:00"), "canonical");
+    List<String> duplicated = new java.util.ArrayList<>(lines);
+    duplicated.add(2, lines.get(2));
+    assertRejected(String.join("\n", duplicated) + "\n", "ascending");
+    List<String> swapped = new java.util.ArrayList<>(lines);
+    java.util.Collections.swap(swapped, 2, 3);
+    assertRejected(String.join("\n", swapped) + "\n", "ascending");
+  }
+
+  private static void assertRejected(String export, String message) {
+    assertThatThrownBy(() -> read(export))
+        .isInstanceOf(IOException.class)
+        .hasMessageContaining(message);
+  }
+
+  private static byte[] goldenExport() throws IOException {
+    try (var in =
+        ChunkIndexLifecycleTest.class.getResourceAsStream(
+            io.github.kjmorse2.mconeworld.fixtures.index.ChunkIndexFixtures.GOLDEN_EXPORT)) {
+      return java.util.Objects.requireNonNull(in).readAllBytes();
+    }
+  }
+
   private static void read(String text) throws IOException {
     ChunkIndexExport.Reader reader =
         ChunkIndexExport.read(new ByteArrayInputStream(text.getBytes(StandardCharsets.UTF_8)));

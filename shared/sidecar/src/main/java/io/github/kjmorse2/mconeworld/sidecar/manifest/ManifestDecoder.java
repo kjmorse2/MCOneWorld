@@ -666,7 +666,7 @@ final class ManifestDecoder {
         } else {
           error(
               ManifestIssueCodes.UNKNOWN_MEMBER,
-              at.field(safeField(name)),
+              memberAt(at, name),
               "Unknown member \"" + name + "\" for schema " + ManifestCodec.CURRENT);
           failed = true;
         }
@@ -703,7 +703,12 @@ final class ManifestDecoder {
     @Nullable T read(Obj object);
   }
 
-  private static String safeField(String name) {
-    return name.matches("[a-zA-Z][a-zA-Z0-9_]*") ? name : "_unknown_";
+  /**
+   * Where an unknown member is reported: {@code $.name} when the name fits the field grammar of
+   * {@link IssueLocation#field}, else the escaped key form {@code $[name]}. Any JSON string can be
+   * a member name, and reporting one must never fail.
+   */
+  private static IssueLocation memberAt(IssueLocation at, String name) {
+    return name.matches("[a-zA-Z][a-zA-Z0-9_]*") ? at.field(name) : at.key(name);
   }
 }
