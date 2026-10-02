@@ -56,7 +56,7 @@ All implementation decisions must preserve these invariants:
 - Silently resetting the central End island or dragon-fight metadata.
 - Modifying existing chunks merely because a new world-generation policy was installed.
 
-The long-term End strategy remains a separately approved design decision. Until it is resolved, preserve all existing End chunks, builds, entities, gateways, and dragon-fight data.
+The End strategy is decided by ADR 0010 (2026-10-02): a new season archives the whole End dimension into the sidecar's backup area and resets the dragon fight, through the Tool's journaled season transition, so a fresh End generates. This is never silent: it is previewed, backed up, verified, and reversible. Outside that operation, preserve all existing End chunks, builds, entities, gateways, and dragon-fight data.
 
 ## 4. Monorepo architecture
 
@@ -330,7 +330,7 @@ MCOneWorld Paper is the runtime authority for the active season.
 It may provide internally toggled modules for:
 
 - Sidecar loading, validation, locking, and safe runtime updates.
-- Season activation and world-spawn application.
+- Applying a season activation: world spawn, then player archival and reset. The Tool activates a season offline and marks it pending application (ADR 0011); the plugin applies it at startup and clears the marker.
 - Player inventory/Ender-chest archival and progression reset.
 - Respawn-policy enforcement.
 - Archive portal and hub behavior.
@@ -508,10 +508,10 @@ Each decision records context, selected option, alternatives, consequences, migr
 
 Do not silently decide the following while implementing an unrelated feature:
 
-- Whether the offline tool is an MCA Selector fork or an independent application.
+- ~~Whether the offline tool is an MCA Selector fork or an independent application.~~ Resolved by ADR 0009: a new application that vendors selected MCA Selector code.
 - The final compact chunk-index encoding.
 - Whether the archive hub is in protected distant terrain or a separate custom dimension/world.
-- Whether each season receives a separate End world/dimension.
+- ~~Whether each season receives a separate End world/dimension.~~ Resolved by ADR 0010: the End is archived and regenerated per season. A separate End dimension per season may still be added later.
 - Which third-party home, warp, claim, map, or permission plugins receive first-class integrations.
 - The default stronghold density and exact portal-unlock recipe/cost.
 - Whether exact F3-line replacement is supported in addition to an appended local-coordinate line.

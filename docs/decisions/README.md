@@ -14,5 +14,9 @@ Status values: `Proposed` → `Accepted` | `Rejected` | `Superseded by NNNN`. On
 | [0006](0006-operation-plans-and-journals.md) | Operation plans and durable journals | Accepted |
 | [0007](0007-chunk-index-encoding.md) | Chunk-index encoding | Accepted (2026-10-01) |
 | [0008](0008-client-protocol.md) | Client/server protocol, version 1 | Accepted (2026-10-01, delegated) |
+| [0009](0009-tool-and-mca-selector.md) | MCOneWorld Tool and MCA Selector | Accepted (2026-10-02) |
+| [0010](0010-end-reset-by-archive.md) | Resetting the End by archiving it | Accepted (2026-10-02) |
+| [0011](0011-offline-season-activation.md) | Offline season activation with pending application | Accepted (2026-10-02) |
+| [0012](0012-backup-format.md) | Backups in the sidecar | Accepted (2026-10-02); byte format in T4 |
 
-Decisions reserved for later milestones and **not** decided here: the offline tool's relationship to MCA Selector (root §22), and the other deferred choices in root §22. The chunk-index encoding was decided by ADR 0007.
+Decided since the shared prompts: the chunk-index encoding (ADR 0007), the Tool's relationship to MCA Selector (ADR 0009), and the End strategy (ADR 0010). The other deferred choices in root §22 remain open.
