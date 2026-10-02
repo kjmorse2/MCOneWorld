@@ -8,8 +8,8 @@ package io.github.kjmorse2.mconeworld.sidecar.index;
  * cursor, and batch it handed out.
  *
  * <p>The contract (see the package documentation) is defined by {@link ChunkMutation}, {@link
- * ChunkQuery}, and {@link ChunkOrder}. The only implementation today is the in-memory reference in
- * {@code shared:test-fixtures}; the persistent encoding awaits ADR 0007.
+ * ChunkQuery}, and {@link ChunkOrder}. The persistent implementation is {@link SidecarChunkIndex};
+ * the in-memory reference in {@code shared:test-fixtures} defines the expected answers.
  */
 public interface ChunkIndex extends AutoCloseable {
 

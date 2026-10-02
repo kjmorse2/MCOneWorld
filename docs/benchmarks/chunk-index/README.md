@@ -5,20 +5,21 @@ The evidence behind [ADR 0007](../../decisions/0007-chunk-index-encoding.md).
 | File | What it is |
 |---|---|
 | [`budgets.md`](budgets.md) | Gate and target budgets, and the datasets. Committed **before** any measurement (`ab5a0fa0`). |
-| [`results.md`](results.md) | The summarized results: budget verdicts, per-dataset tables, and observations |
+| [`results.md`](results.md) | Prompt 08: the candidate comparison (budget verdicts, per-dataset tables, observations) |
+| [`results-prompt09.md`](results-prompt09.md) | Prompt 09: the production index against the Prompt 08 baseline, including the choice of compression unit |
 | `raw/<run>.jsonl` | Raw results, one JSON object per line. Each file is under 200 KB, so they are committed. Generated index files never are. |
 
-The code is in `shared/sidecar/src/bench/` (see its [README](../../../shared/sidecar/src/bench/README.md)). The datasets are `ChunkDatasets` in `shared:test-fixtures`.
+The harness is in `shared/sidecar/src/bench/` (see its [README](../../../shared/sidecar/src/bench/README.md)). Since Prompt 09 it measures only the production index; the Prompt 08 spike candidates were removed (ADR 0007, D4), and their raw results stay here. The datasets are `ChunkDatasets` in `shared:test-fixtures`.
 
 ## Reproducing
 
 ```bash
-./gradlew :shared:sidecar:benchTest       # candidates must match the reference first
+./gradlew :shared:sidecar:test           # the production index must match the reference first
 ./gradlew :shared:sidecar:benchChunkIndex -Pbench.args="--datasets all --probes"
 ./gradlew -q :shared:sidecar:benchSummarize -Pbench.args="docs/benchmarks/chunk-index/raw/<run>.jsonl"
 ```
 
-Index files are written under `shared/sidecar/build/chunk-index-bench/`. That location must be on the filesystem you want to measure: a RAM-backed `/tmp` would hide every `fsync`. The full run needs about 3 GB of free space at peak. It takes about 30 minutes without `c1-region-files`. That candidate needs one `fsync` per touched region and adds more than an hour on the large datasets, so pass `--candidates` to leave it out.
+Index files are written under `shared/sidecar/build/chunk-index-bench/`. That location must be on the filesystem you want to measure: a RAM-backed `/tmp` would hide every `fsync`. The full run needs about 3 GB of free space at peak and takes about ten minutes for the three production layouts on the reference machine.
 
 ### How each case runs
 
@@ -48,7 +49,7 @@ One compact JSON object per line. Lines are only ever appended, so a file can ho
 |---|---|
 | `format`, `version` | Always `"mconeworld-bench-result"` and `1` |
 | `run` | `run-<UTC time>-<commit>[-dirty]`. `-dirty` means `shared/` or `gradle/` had uncommitted changes. |
-| `candidate` | `c1-region-files`, `c1-region-segments`, `c1-region-log`, `c2-sqlite`, `c3-roaring`, or `c4-mvstore` |
+| `candidate` | Prompt 09: `prod-rows1`, `prod-rows4`, `prod-rows32`. Prompt 08 files: `c1-region-files`, `c1-region-segments`, `c1-region-log`, `c2-sqlite`, `c3-roaring`, `c4-mvstore`. |
 | `dataset`, `scale` | The `ChunkDatasets` name and its linear scale |
 | `phase` | `env`, `build`, `query`, `corruption`, `crash`, or (for status lines) the child's phase |
 | `metric`, `unit` | See below |

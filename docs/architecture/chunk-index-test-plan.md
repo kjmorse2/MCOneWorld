@@ -1,8 +1,8 @@
 # Chunk index: corruption and migration test plan
 
-- Milestone: Prompt 08 deliverable, to be **executed in Prompt 09**
-- Applies to: the encoding recommended by [ADR 0007](../decisions/0007-chunk-index-encoding.md), drafted in [`chunk-index-v1-draft.md`](../formats/chunk-index-v1-draft.md)
-- Status: proposed with ADR 0007. If the owner picks another candidate, rewrite the format-specific parts (sections 2.2 and 3.2); the rest is candidate-independent.
+- Milestone: written in Prompt 08; **executed in Prompt 09** (status in §5)
+- Applies to: the encoding accepted in [ADR 0007](../decisions/0007-chunk-index-encoding.md), specified in [`chunk-index-v1.md`](../formats/chunk-index-v1.md)
+- Status: executed against the production index, except the migration items listed as deferred in §5.
 
 ## 1. Principles
 
@@ -75,3 +75,42 @@ The spike executed a subset against every candidate, so the comparison is fair:
 - `CrashProbe` is the process-kill form of R8, with 40 trials. For C1-log, the writer also checkpoints every 5 commits, so kills land inside checkpoints too.
 
 Results are in [`docs/benchmarks/chunk-index/results.md`](../benchmarks/chunk-index/results.md). Exhaustive flipping, truncation, fault-injected `fsync`, and all migration tests are left for Prompt 09, against the production implementation.
+
+## 5. Execution status (Prompt 09)
+
+All test classes below are in `shared/sidecar/src/test/java/.../sidecar/index/` and run in `check`.
+
+| # | Status | Where |
+|---|---|---|
+| X1 | ✅ Every byte of a feature-complete small index (more than 5 000 flips; the test asserts the count), on both the read path and the verify path: 0 silent, 0 uncoded | `ChunkIndexCorruptionTest.everySingleByteFlipIsDetectedOnReadAndByVerify`; the benchmark `CorruptionProbe` adds 300 random flips per layout on `friend-server` |
+| X2 | ✅ Catalog and segment truncation is detected. A cut log reads as an earlier commit, never a mixture. | `…truncatingCatalogOrSegmentIsDetected…` |
+| X3 | ✅ | `aMissingSegmentIsNamed`; a missing catalog is `index_missing` |
+| X4 | ✅ for blocks: each block's header CRC is bound to the catalog. ⚠️ A whole catalog rolled back to a valid older generation is a valid older state, which no file can disprove. Operations detect it through `ChunkIndexState.pin()`. | `aCatalogEntryPointingAtAnotherRegionsBlockIsDetected` and the flips |
+| X5 | ✅ | `aSegmentFromAnotherIndexIsRejected` |
+| X6 | ✅ | `aCatalogEntryPointingAtAnotherRegionsBlockIsDetected` |
+| X7 | ✅ | `anAbsurdCountIsRefusedBeforeAllocating`; every count passes `ByteSource.count` |
+| X8 | ✅ for major and minor versions. The format has no optional record types to test. | `anUnknownMajorVersionFailsClosedAndANewerMinorIsReadOnly` |
+| X9 | ✅ | `aSymlinkInTheAreaIsRefused` |
+| X10 | ✅ Zero mutating steps and zero open handles | `inspectionVerificationAndReadingNeverWrite` |
+| R1 | ✅ | `ChunkIndexFaultTest` (torn writes at every step), `aTornLogIsNeverAppendedTo`, and the truncation test |
+| R2 | ✅ | `damageToACompleteLogFrameIsCorruptionNotATornTail` and the flips |
+| R3 | ✅ | `aDamagedBlockHeaderNamesItsRegion`, `aDamagedUnitNamesItsRegionAndUnit`, `verifyReportsEveryDamagedRegionAtItsLocationAndKeepsGoing` |
+| R4 | ✅ `verify()` recomputes every summary. A wrong summary with a valid catalog CRC can only come from a writer bug: queries would trust it, and verification reports it. | `IndexInspector.verify` |
+| R5 | ✅ | `aLoggedMutationThatNoLongerAppliesIsReportedNotIgnored` |
+| R6 | ✅ | `aMissingSegmentIsNamed`, `aLogNewerThanTheCatalogIsUnexplained` |
+| R7 | ✅ Reported as information; removed only by `removeObsoleteFiles` | Fault test (verify passes with orphans); `unexplainedFilesAreReportedAndBlockTheWriterButAreNeverRemoved` |
+| R8 | ✅ Every filesystem step of create, commits, checkpoint, and maintenance, with and without torn prefixes. The benchmark `CrashProbe` adds 40 `SIGKILL`s per layout, including some inside checkpoints. | `ChunkIndexFaultTest` |
+| R9 | ✅ | `ChunkIndexFaultTest` (`COMPACT`) |
+| M1 | ✅ | `ChunkIndexGoldenTest` |
+| M2 | ✅ Byte-identical record lines after export, import with different batching and layout, and export again | `ChunkIndexLifecycleTest.exportRoundTripsAtTheSemanticLevelAndIsDeterministic` |
+| M3, M4, M5 | ⏳ **Deferred** to the first real index migration. There is no second version to migrate to, and the migration operation will be a journaled platform operation (ADR 0006). Its pieces are tested here: the canonical export as the semantic comparison (M2), a new index beside the old one (index creation never touches another), and fail-closed reading of corrupt sources (the X and R items). | — |
+| M6 | ✅ | `anUnknownMajorVersionFailsClosedAndANewerMinorIsReadOnly` |
+| M7 | ⏳ **Deferred** to the manifest minor version that adds the index reference (owner decision D2) | — |
+
+**Also in Prompt 09:**
+
+- `SidecarChunkIndexDifferentialTest`: the reference comparison on every dataset shape and several block layouts, with rolling segments, compaction, and reopening.
+- `SidecarChunkIndexProperties`: random programs.
+- `ChunkIndexLifecycleTest`: locks, claims, and readers, plus deterministic resource bounds.
+- `ChunkIndexMemoryTest`: one million records in `-Xmx128m`.
+

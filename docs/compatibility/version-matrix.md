@@ -60,13 +60,7 @@ Pinned in `gradle/libs.versions.toml`.
 | Benchmarks (not used) | `org.openjdk.jmh:jmh-core` | `1.37` | GPL-2.0 WITH Classpath-exception-2.0 | **not adopted** in Prompt 08. The chunk-index measurements are whole operations on disk-backed state, each case in its own fixed-heap JVM, so a small custom harness fits better than a microbenchmark framework (see [`docs/benchmarks/chunk-index/README.md`](../benchmarks/chunk-index/README.md)). |
 | Coverage (diagnostic) | JaCoCo (bundled with Gradle) | Gradle default for 9.8.0 | EPL-2.0 | build |
 
-**Chunk-index spike dependencies (Prompt 08).** These are pinned and verified, but used **only** by `shared/sidecar`'s `bench` source set, which is never packaged or on a production classpath. They are removed or promoted when [ADR 0007](../decisions/0007-chunk-index-encoding.md) is decided.
-
-| Candidate | Artifact | Version | License | Notes |
-|---|---|---|---|---|
-| C2 | `org.xerial:sqlite-jdbc` | `3.53.4.0` | Apache-2.0, bundling public-domain SQLite | Bundles native libraries per OS and architecture. Paper's server build itself puts `sqlite-jdbc 3.49.1.0` on the server classpath (`paper-server/build.gradle.kts`, checked 2026-09-30). |
-| C3 | `org.roaringbitmap:RoaringBitmap` | `1.6.23` | Apache-2.0 | Pure Java; has a portable serialization spec |
-| C4 | `com.h2database:h2-mvstore` | `2.5.252` | MPL-2.0 or EPL-1.0 | Pure Java. H2's storage format changed incompatibly between 1.4 and 2.x. |
+**Chunk-index spike dependencies (Prompt 08), removed in Prompt 09.** `org.xerial:sqlite-jdbc` 3.53.4.0, `org.roaringbitmap:RoaringBitmap` 1.6.23, and `com.h2database:h2-mvstore` 2.5.252 were on the `bench` classpath only, while ADR 0007 was undecided. The accepted encoding uses only the JDK, so they were removed (owner decision D4), along with their lockfile and verification-metadata entries. Paper's own server classpath carries `sqlite-jdbc` 3.49.1.0 (`paper-server/build.gradle.kts`, checked 2026-09-30); MCOneWorld does not use it.
 
 ## 4. Evidence
 

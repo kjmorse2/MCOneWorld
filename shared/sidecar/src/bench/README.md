@@ -1,29 +1,29 @@
-# `bench` source set: the Prompt 08 chunk-index spike
+# `bench` source set: the chunk-index benchmark harness
 
-**Not production code.** This source set holds the candidate chunk-index encodings and the benchmark harness behind [ADR 0007](../../../../docs/decisions/0007-chunk-index-encoding.md), which is **Proposed**. It is never packaged and never on a production classpath. Once ADR 0007 is decided, it is removed, or the chosen candidate is rewritten properly in `src/main` (Prompt 09).
+The harness behind [ADR 0007](../../../../docs/decisions/0007-chunk-index-encoding.md) and its budgets ([`docs/benchmarks/chunk-index/`](../../../../docs/benchmarks/chunk-index/)).
 
-| Package | Contents |
+- **Prompt 08** built it to compare candidate encodings.
+- **Prompt 09** removed the candidates and their dependencies (owner decision D4). It now measures only the production index, `sidecar.index.SidecarChunkIndex`.
+
+The source set is never packaged and never on a production classpath.
+
+| Type (package `sidecar.index.bench`) | Role |
 |---|---|
-| `sidecar.index.spike` | The candidates. `Candidate` lists them: `c1-region-files`, `c1-region-segments`, `c1-region-log` (the recommended design), `c2-sqlite`, `c3-roaring`, and `c4-mvstore`. It also holds `Workload`, the shared load and update generators, and `CandidateDifferentialTest`. |
-| `sidecar.index.spike.bench` | `BenchmarkDriver`, `BenchmarkCase`, `CorruptionProbe`, `CrashProbe`, and `Summarize` |
+| `Candidate` | The measured configurations: `prod-rows1`, `prod-rows4` (default), and `prod-rows32`. They differ only in rows per compression unit. |
+| `ProductionIndex`, `BenchIndex` | A sidecar, its writer lock, and its index as one handle. Provably stale locks left by the crash probe's kills are taken over. |
+| `BenchmarkDriver` | Runs every case in fresh, fixed-heap JVMs and appends raw result lines |
+| `BenchmarkCase` | One case: a build phase, then the query and update phase |
+| `CorruptionProbe`, `CrashProbe` | Gates B2 (random byte flips) and B3 (`SIGKILL` mid-commit) |
+| `Summarize` | Raw results to Markdown; reads Prompt 08 files too |
+
+Datasets and workloads come from `shared:test-fixtures` (`ChunkDatasets`, `IndexWorkloads`).
 
 ## Run
 
 ```bash
-# Differential tests: every candidate must answer exactly like the reference index.
-# This task is part of `check`.
-./gradlew :shared:sidecar:benchTest
-
-# Benchmarks. Each case runs in fresh JVMs; results are appended to
-# docs/benchmarks/chunk-index/raw/<run>.jsonl
-./gradlew :shared:sidecar:benchChunkIndex -Pbench.args="--datasets friend-server"
 ./gradlew :shared:sidecar:benchChunkIndex -Pbench.args="--datasets all --probes"
+./gradlew :shared:sidecar:benchChunkIndex -Pbench.args="--candidates prod-rows4 --datasets millions"
+./gradlew -q :shared:sidecar:benchSummarize -Pbench.args="docs/benchmarks/chunk-index/raw/<run>.jsonl"
 ```
 
-The formats, budgets, and results are in [`docs/benchmarks/chunk-index/`](../../../../docs/benchmarks/chunk-index/).
-
-## Rules for this code
-
-- The candidates share `SpikeIndexBase`, which provides batches and lifecycle, and `RecordCodec`, which provides record bytes. Storage engines therefore differ only in storage.
-- A candidate's numbers count only while `CandidateDifferentialTest` passes for it.
-- The on-disk layouts here are unversioned throwaway formats. The proposed production format is in [`docs/formats/chunk-index-v1-draft.md`](../../../../docs/formats/chunk-index-v1-draft.md).
+Correctness is not this source set's job. The production index's differential, fault, and corruption tests live in `src/test` and run in `check`.

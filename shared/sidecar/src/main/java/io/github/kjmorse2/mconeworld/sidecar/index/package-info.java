@@ -4,10 +4,14 @@
  * io.github.kjmorse2.mconeworld.domain.provenance.ChunkProvenance} records are queried and updated
  * without ever being loaded at once.
  *
- * <p><b>Status (Prompt 08): API only.</b> No persistent implementation exists. The on-disk encoding
- * is proposed in ADR 0007 and is not accepted. Until it is, the only implementation is the
- * in-memory reference in {@code shared:test-fixtures}, which is used for semantics and differential
- * testing. Do not persist chunk-index data through anything else.
+ * <p><b>Storage.</b> {@link io.github.kjmorse2.mconeworld.sidecar.index.ChunkIndexStore} opens the
+ * index of a sidecar (its reserved {@code chunk-index/} area), and {@link
+ * io.github.kjmorse2.mconeworld.sidecar.index.SidecarChunkIndex} is the writable handle. The format
+ * is {@code docs/formats/chunk-index-v1.md}; the decision is ADR 0007. It has region blocks
+ * compressed in units and checksummed in append-only segments, a catalog checkpoint with derived
+ * summaries, and a log of mutations committed with one {@code fdatasync}. Everything not public in
+ * this package is format code. The in-memory {@code ReferenceChunkIndex} in {@code
+ * shared:test-fixtures} defines the expected answers for differential tests.
  *
  * <p>The contract, in one place so every implementation behaves identically:
  *

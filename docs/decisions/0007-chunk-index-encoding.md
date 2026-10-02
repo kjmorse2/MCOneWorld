@@ -5,7 +5,7 @@
 - Evidence:
   - [`docs/benchmarks/chunk-index/`](../benchmarks/chunk-index/README.md): budgets committed before measuring, raw results, and the summary
   - the spike code in `shared/sidecar/src/bench/`
-- Proposed format: [`docs/formats/chunk-index-v1-draft.md`](../formats/chunk-index-v1-draft.md)
+- Format (normative since Prompt 09): [`docs/formats/chunk-index-v1.md`](../formats/chunk-index-v1.md)
 - Test plan: [`docs/architecture/chunk-index-test-plan.md`](../architecture/chunk-index-test-plan.md)
 
 ## 1. Context
@@ -144,12 +144,12 @@ C1-log's probe dataset stays under the checkpoint threshold, so that probe exerc
 | Disk per record | 5–20 bytes once checkpointed | 3–21 | ❌ 48–117 | 3–22 | ❌ 22–275 |
 | Dependencies and maintenance | ✅ JDK only (`java.util.zip`, CRC-32C, `FileChannel`) | ✅ | ❌ native libraries per OS and architecture. Paper already puts sqlite-jdbc 3.49.1.0 on the server classpath, and JNI symbol names prevent relocating our copy. | ⚠️ one pure-Java dependency | ⚠️ one pure-Java dependency (MPL-2.0 or EPL-1.0) |
 | Format longevity and migration | ⚠️ we own the format; it is small, documented, and readable in any language with DEFLATE and CRC-32C | ⚠️ same | ✅ SQLite's file format is extremely stable; schema migrations are SQL | ⚠️ ours, plus Roaring's portable spec | ❌ H2's storage format broke between 1.4 and 2.x |
-| Readable diagnostic export | ✅ canonical JSONL (draft §9) | ✅ | ✅ also browsable with the `sqlite3` CLI | ✅ | ⚠️ through our export only |
+| Readable diagnostic export | ✅ canonical JSONL (format §10) | ✅ | ✅ also browsable with the `sqlite3` CLI | ✅ | ⚠️ through our export only |
 | Code we must own | the most: format, log, checkpoint, compaction | less | least | most | little |
 
 ## 6. Recommendation and decision table
 
-**Recommended: C1-log.** That is region-partitioned, compressed, CRC-checked record blocks in append-only segments; a catalog with derived summaries as the checkpoint; and an append-only, CRC-framed log of *mutations* as the commit path. It is specified in [`chunk-index-v1-draft.md`](../formats/chunk-index-v1-draft.md).
+**Recommended: C1-log.** That is region-partitioned, compressed, CRC-checked record blocks in append-only segments; a catalog with derived summaries as the checkpoint; and an append-only, CRC-framed log of *mutations* as the commit path. It is specified in [`chunk-index-v1.md`](../formats/chunk-index-v1.md).
 
 | | C1-files | C1-segments | **C1-log** | C2 SQLite | C3 Roaring | C4 MVStore |
 |---|---|---|---|---|---|---|
@@ -235,3 +235,26 @@ The spike's dependencies are on the `bench` classpath only. They are never packa
   - dataset tests (`SyntheticWorldTest`)
   - the candidate differential, snapshot, atomicity, torn-tail, and mid-log damage tests (`CandidateDifferentialTest`, 32 cases, in `benchTest`)
 - **Prompt 09** executes [`chunk-index-test-plan.md`](../architecture/chunk-index-test-plan.md): exhaustive corruption, truncation, fault-injected `fsync`, golden fixtures, and migration tests. It also re-runs this harness against the production implementation.
+
+## 12. Implementation (Prompt 09)
+
+The accepted design is implemented in `sidecar.index` (`ChunkIndexStore`, `SidecarChunkIndex`, `ChunkIndexExport`) and specified normatively in [`chunk-index-v1.md`](../formats/chunk-index-v1.md). It is the design that was **measured**: a catalog checkpoint, region blocks in segments, and a log of mutations. The Prompt 08 draft also floated single-fsync commit records inside segments and a two-level catalog; neither was adopted, because neither was measured and the catalog is rewritten only at checkpoints.
+
+**Changes from the spike, each backed by a test or a measurement:**
+
+| Change | Why | Evidence |
+|---|---|---|
+| Blocks compress in **units of R rows**, with a per-unit CRC; R is stored per block, and the default is 4 | Decision D3: a cache miss inflates one unit, not the region | B4 met: 15.4 µs p50 at 9.5 M records, against 63 µs ([results](../benchmarks/chunk-index/results-prompt09.md)) |
+| Every file has a **versioned, CRC-checked header with the index id** | Version rejection, foreign-file detection | `anUnknownMajorVersion…`, `aSegmentFromAnotherIndexIsRejected` |
+| The catalog stores each block's **header length and header CRC** | Binds blocks to the checkpoint; one read per header | `aCatalogEntryPointingAtAnotherRegionsBlockIsDetected` |
+| A log **shorter than its header is a torn tail**, not corruption | The fault test found that an interrupted log creation made the index unopenable | `ChunkIndexFaultTest` (`FIRST_COMMIT_OF_GENERATION`) |
+| A failed write **breaks the handle** (`handle_broken`) until it is reopened | The outcome of a failed write is unknown; reopening reads what is durable | `ChunkIndexFaultTest` |
+| A new **reserved `chunk-index/` area**, written only through `IndexFileWriter`, one claim per writer | Lock-checked writes, and no two handles interleaving | `ChunkIndexLifecycleTest` |
+| The spike candidates and their dependencies are **removed** | Decision D4 | 164 verified components, down from 168 |
+
+**Deferred, as recorded in the test plan:**
+
+- the manifest reference to the area (D2), which comes with a manifest minor version
+- the index-migration machinery (M3–M5), which comes with the first index version change
+
+**Known costs compared with the spike:** a slower cold open (197 ms against 39 ms, budget 1 s), 6 % more disk, and an index heap above the cache budget because per-entry overhead is not counted. All are within budget and explained in the results.

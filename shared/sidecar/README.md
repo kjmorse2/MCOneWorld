@@ -15,7 +15,7 @@ It operates on a caller-supplied root and never rewrites anything on a read-only
 
 **Forbidden:** `shared:protocol`, `shared:test-fixtures` in production code, and every platform dependency.
 
-**Status:** manifest v1 (Prompt 04), storage safety (Prompt 05), the migration framework (Prompt 06), and operation plans and journals (Prompt 07) are implemented. The chunk-index **contract** (`sidecar.index`) exists. Its persistent encoding is proposed in ADR 0007, awaits owner review, and will be implemented in Prompt 09.
+**Status:** manifest v1 (Prompt 04), storage safety (Prompt 05), the migration framework (Prompt 06), operation plans and journals (Prompt 07), and the chunk index (Prompts 08 and 09, ADR 0007) are implemented.
 
 Packages:
 
@@ -28,12 +28,16 @@ Packages:
   - utilities and errors: `Checksums`, `StorageException`, `StorageIssueCodes`
   - fault-injection seam: `StorageFileSystem`, `JdkStorageFileSystem`, `CommitStage`
   - the mutable `operations/` area: `OperationFiles` (read), `OperationFileWriter` (write-once, append, replace; lock-checked)
+  - the mutable `chunk-index/` area: `IndexFiles` (read, with positioned reads), `IndexFileWriter` (create, append, atomic replace, delete; lock-checked; obtained from `SidecarWriter.openIndexWriter()`)
 
   The layout and protocol are in [`docs/formats/sidecar-storage-v1.md`](../../docs/formats/sidecar-storage-v1.md); the policy is in ADR 0004.
 - `sidecar.migration` (API): `MigrationPlanner`, `MigrationRunner`, `MigrationRegistry` (the built-in registry is empty), `ManifestMigration`, `MigrationStep`, `MigrationId`, `MigrationPlan`, `MigrationReport`, `StepReport`, `MigrationRecorder`, `VerifiedBackup`, `MigrationResult`, `MigrationException`, `MigrationIssueCodes`. The policy is in ADR 0005.
 - `sidecar.operation` (API): `OperationJournals`, `OperationJournal`, `JournalAck`, `MutationPermit`, `OperationStatus`, `JournalIntegrity`, `OperationPlanCodec`, `DecodedPlan`, `OperationPlanLimits`, `OperationFormatException`, `JournalException`, `JournalIssueCodes`. The format is [`docs/formats/operation-journal-v1.md`](../../docs/formats/operation-journal-v1.md); the policy is ADR 0006.
-- `sidecar.index` (API only; Prompt 08): `ChunkIndex`, `ChunkIndexReader`, `ChunkCursor`, `ChunkIndexBatch`, `ChunkMutation`, `ChunkQuery`, `SeasonFilter`, `ProtectionFilter`, `ChunkOrder`, `ChunkIndexException`, `ChunkIndexIssueCodes`. There is no persistent implementation. The in-memory reference is `fixtures.index.ReferenceChunkIndex`.
-- The `bench` source set (**spike, not API, never packaged**) holds the Prompt 08 candidate encodings and the benchmark harness. See [`src/bench/README.md`](src/bench/README.md).
+- `sidecar.index` (API): `ChunkIndexStore`, `SidecarChunkIndex`, `ChunkIndexSnapshot`, `ChunkIndexState`, `ChunkIndexOptions`, `ChunkIndexStatus`, `ChunkIndexExport`, and the contract types (`ChunkIndex`, `ChunkIndexReader`, `ChunkCursor`, `ChunkIndexBatch`, `ChunkMutation`, `ChunkQuery`, `SeasonFilter`, `ProtectionFilter`, `ChunkOrder`, `ChunkIndexException`, `ChunkIndexIssueCodes`).
+  - Everything else in the package is package-private format code: the codecs, `IndexData`, `SnapshotReader`, and `IndexInspector`.
+  - The format is [`docs/formats/chunk-index-v1.md`](../../docs/formats/chunk-index-v1.md); the policy is ADR 0007.
+  - Storage access: `IndexFiles` (read) and `IndexFileWriter` (lock-checked, one claim per writer) in `sidecar.storage`.
+- The `bench` source set (**not API, never packaged**) is the chunk-index benchmark harness. See [`src/bench/README.md`](src/bench/README.md).
 - `sidecar.internal.json` (**internal, not API**): the strict JSON reader over jackson-core, and the canonical writer.
 
 jackson-core is an `implementation` dependency. Its types never appear in public signatures. Platform jars that shade it must relocate `tools.jackson.core`.

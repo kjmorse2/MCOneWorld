@@ -432,4 +432,80 @@ class ChunkIndexCorruptionTest {
     }
     assertThat(stray).exists();
   }
+
+  @Test
+  void aCatalogEntryPointingAtAnotherRegionsBlockIsDetected() throws Exception {
+    Catalog catalog = catalog();
+    var dimension = catalog.regions.entrySet().iterator().next();
+    var regions = new ArrayList<>(dimension.getValue().entrySet());
+    var a = regions.get(0);
+    Catalog.Entry b = regions.get(1).getValue();
+    java.util.TreeMap<Long, Catalog.Entry> swapped = new java.util.TreeMap<>(dimension.getValue());
+    swapped.put(
+        a.getKey(),
+        new Catalog.Entry(
+            a.getValue().regionX,
+            a.getValue().regionZ,
+            b.segment,
+            b.offset,
+            b.length,
+            b.headerLength,
+            b.headerCrc,
+            presenceOf(a.getValue()),
+            a.getValue().count,
+            a.getValue().summary));
+    java.util.TreeMap<DimensionKey, java.util.NavigableMap<Long, Catalog.Entry>> all =
+        new java.util.TreeMap<>(catalog.regions);
+    all.put(dimension.getKey(), swapped);
+    Files.write(
+        area.resolve("catalog"),
+        new Catalog(catalog.indexId, catalog.generation, catalog.nextSegment, false, all).encode());
+    ChunkIndexException failure = readFailure();
+    assertThat(failure.code()).isEqualTo(ChunkIndexIssueCodes.BLOCK_CORRUPT);
+    assertThat(failure.getMessage()).contains("another region");
+  }
+
+  private static long[] presenceOf(Catalog.Entry e) {
+    long[] words = new long[16];
+    for (int i = 0; i < 1024; i++) {
+      if (e.present(i)) {
+        words[i >>> 6] |= 1L << (i & 63);
+      }
+    }
+    return words;
+  }
+
+  @Test
+  void aLoggedMutationThatNoLongerAppliesIsReportedNotIgnored() throws Exception {
+    // A well-formed frame recording activity on a chunk that has no record anywhere.
+    ChunkPosition nowhere = new ChunkPosition(DimensionKey.THE_END, 12_345, -6_789);
+    Map<ChunkPosition, List<ChunkMutation>> frame = new java.util.LinkedHashMap<>();
+    frame.put(
+        nowhere,
+        List.of(
+            new ChunkMutation.RecordActivity(
+                nowhere,
+                new io.github.kjmorse2.mconeworld.domain.provenance.SeasonActivity(
+                    SEASON,
+                    Instant.EPOCH,
+                    new io.github.kjmorse2.mconeworld.domain.provenance.ProvenanceEvidence(
+                        io.github.kjmorse2.mconeworld.domain.provenance.EvidenceSource
+                            .RUNTIME_OBSERVATION,
+                        io.github.kjmorse2.mconeworld.domain.provenance.Confidence.HIGH)))));
+    Files.write(logFile(), DeltaLog.frame(frame), java.nio.file.StandardOpenOption.APPEND);
+    ChunkIndexException failure = readFailure();
+    assertThat(failure.code()).isEqualTo(ChunkIndexIssueCodes.MUTATION_INAPPLICABLE);
+    assertThat(store().verify().has(ChunkIndexIssueCodes.MUTATION_INAPPLICABLE)).isTrue();
+  }
+
+  @Test
+  void aLogNewerThanTheCatalogIsUnexplained() throws Exception {
+    long generation = catalog().generation;
+    Files.write(
+        area.resolve(IndexFormat.logPath(generation + 1).toString()),
+        DeltaLog.header(catalog().indexId, generation + 1));
+    ChunkIndexStatus status = store().inspect();
+    assertThat(status.findings().has(ChunkIndexIssueCodes.UNEXPLAINED_FILE)).isTrue();
+    assertThat(status.usable()).isFalse();
+  }
 }

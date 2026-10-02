@@ -26,3 +26,5 @@ Artifact: `io.github.kjmorse2.mconeworld:mconeworld-shared-test-fixtures` · Pac
   - `ChunkIndexDifferential`: streams any implementation against the reference.
   - `ChunkDatasets` and `SyntheticWorld`: deterministic, seed-generated benchmark and test worlds, from `friend-server` to the 9.5-million-record `millions`. They are streamed one region at a time and never committed.
   - `ChunkRecordText`: canonical record lines and whole-index digests.
+  - `IndexWorkloads`: bulk loads in region order, and runtime-like update batches that never get rejected.
+  - `ChunkIndexFixtures`: the golden chunk-index v1 files (`chunk-index/v1/`: catalog, segment, log, export, each with a `.meta`) and the recipe that writes them.

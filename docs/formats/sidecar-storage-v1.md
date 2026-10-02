@@ -12,7 +12,8 @@
 ├── manifest.previous.json           the manifest that manifest.json replaced (last-known-good)
 ├── writer.lock                      permanent empty lock target; OS-locked by the writer
 ├── writer.owner.json                present only while a writer holds (or crashed holding) the lock
-├── operations/                      operation plans and journals: the only mutable area (operation-journal-v1.md)
+├── operations/                      operation plans and journals: a mutable area (operation-journal-v1.md)
+├── chunk-index/                     the chunk index: a mutable area with its own commit point (chunk-index-v1.md)
 ├── .staging/                        present only while a transaction runs, or after an interruption
 │   └── <transaction-id>/
 │       ├── transaction.json         durable intent (§3)
@@ -31,6 +32,7 @@ Reserved names, which may not be staged or referenced:
 - `writer.owner.json.tmp`
 - `.staging` and anything under it
 - `operations` and anything under it (added in Prompt 07; written only through `OperationFileWriter`)
+- `chunk-index` and anything under it (added in Prompt 09; written only through `IndexFileWriter`)
 
 Symbolic links are not allowed anywhere below the root. The root itself may be reached through a symlink.
 
@@ -125,6 +127,24 @@ Plans and journals change independently of the manifest, so they cannot be immut
 | `replace(path, expectedChecksum, bytes)` | The current content must have exactly that checksum (`BASE_CHANGED`). Then temporary file, fsync, atomic rename, and directory sync. It is used only to discard a torn journal tail explicitly. |
 
 Read access, `SidecarStore.operationFiles()`, is read-only like every other read.
+
+## 6a. The `chunk-index/` area
+
+The chunk index ([`chunk-index-v1.md`](chunk-index-v1.md), ADR 0007) is the second mutable area. It has its own commit point, the atomic replacement of its `catalog`, so it is neither staged through transactions nor referenced by the manifest.
+
+**Writes.** They go through `IndexFileWriter`. A writer obtains it with `SidecarWriter.openIndexWriter()`; at most one is open per writer, and closing it releases the claim. Every primitive verifies the writer lock first, takes paths relative to `chunk-index/`, and applies the symlink policy.
+
+| Primitive | Behaviour |
+|---|---|
+| `createArea()`, `createDirectory(path)` | Creates the directory, then syncs its parent |
+| `createNew(path)` | A new file (fails if anything exists). The caller writes it, syncs it, and calls `syncDirectoryOf(path)`. |
+| `openAppend(path, expectedSize)` | The file must hold exactly `expectedSize` bytes (`BASE_CHANGED` otherwise) |
+| `replaceAtomically(temp, target, bytes)` | `temp` must not exist (`RECOVERY_REQUIRED`). Writes and fsyncs `temp`, renames it over `target` atomically, then syncs the directory. Refuses a filesystem without atomic rename (`ATOMIC_MOVE_UNSUPPORTED`). |
+| `delete(path)` | Removes one file. The index uses it only for files it has proven obsolete (format §7). |
+
+**Reads.** `SidecarStore.indexFiles()` is read-only, and adds positioned reads (`openRandomAccess`) for blocks inside segments.
+
+**Storage seam.** `StorageFileSystem` gained `openRandomAccess` and `WritableFile.syncData()` (`fdatasync`) for the index. The index's log commits use the cheaper `syncData()`, because it also persists the file length the data needs.
 
 ## 7. Error codes
 
