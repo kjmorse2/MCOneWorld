@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-package io.github.kjmorse2.mconeworld.sidecar.index.spike.bench;
+package io.github.kjmorse2.mconeworld.sidecar.index.bench;
 
 import java.util.Locale;
 

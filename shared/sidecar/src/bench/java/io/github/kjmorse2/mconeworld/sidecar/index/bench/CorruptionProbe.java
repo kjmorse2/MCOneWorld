@@ -1,13 +1,11 @@
 // SPDX-License-Identifier: MIT
-package io.github.kjmorse2.mconeworld.sidecar.index.spike.bench;
+package io.github.kjmorse2.mconeworld.sidecar.index.bench;
 
 import io.github.kjmorse2.mconeworld.fixtures.index.ChunkDatasets;
 import io.github.kjmorse2.mconeworld.fixtures.index.ChunkRecordText;
+import io.github.kjmorse2.mconeworld.fixtures.index.IndexWorkloads;
 import io.github.kjmorse2.mconeworld.sidecar.index.ChunkIndexException;
 import io.github.kjmorse2.mconeworld.sidecar.index.ChunkIndexReader;
-import io.github.kjmorse2.mconeworld.sidecar.index.spike.Candidate;
-import io.github.kjmorse2.mconeworld.sidecar.index.spike.SpikeIndex;
-import io.github.kjmorse2.mconeworld.sidecar.index.spike.Workload;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -48,11 +46,11 @@ public final class CorruptionProbe {
     Path base = work.resolve("base");
     deleteTree(work);
     Files.createDirectories(base);
-    try (SpikeIndex index = candidate.open(base)) {
-      Workload.bulkLoad(ChunkDatasets.named("friend-server", 1.0), 5000, index);
+    try (BenchIndex index = candidate.open(base)) {
+      IndexWorkloads.bulkLoad(ChunkDatasets.named("friend-server", 1.0), 5000, index);
     }
     String expected;
-    try (SpikeIndex index = candidate.open(base);
+    try (BenchIndex index = candidate.open(base);
         ChunkIndexReader reader = index.reader()) {
       expected = ChunkRecordText.digest(reader);
     }
@@ -125,7 +123,7 @@ public final class CorruptionProbe {
   /** 0 detected, 1 crashed, 2 harmless, 3 silent. */
   private static int classify(
       Candidate candidate, Path directory, String expected, boolean verify) {
-    try (SpikeIndex index = candidate.open(directory)) {
+    try (BenchIndex index = candidate.open(directory)) {
       if (verify) {
         index.verify();
       }

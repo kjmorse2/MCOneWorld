@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
-package io.github.kjmorse2.mconeworld.sidecar.index.spike.bench;
+package io.github.kjmorse2.mconeworld.sidecar.index.bench;
 
 import io.github.kjmorse2.mconeworld.fixtures.index.ChunkDatasets;
-import io.github.kjmorse2.mconeworld.sidecar.index.spike.Candidate;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -135,12 +134,8 @@ public final class Summarize {
     out.append("\n### Budget verdicts\n\n");
     out.append(
         "Worst value across datasets unless the budget names one. ✅ pass, ❌ fail, — not measured.\n\n");
-    List<String> candidates = new ArrayList<>();
-    for (Candidate c : Candidate.values()) {
-      if (data.containsKey(c.id())) {
-        candidates.add(c.id());
-      }
-    }
+    // Every candidate in the files, in first-seen order (old files name the Prompt 08 spike's).
+    List<String> candidates = new ArrayList<>(data.keySet());
     out.append("| Budget |");
     candidates.forEach(c -> out.append(" `").append(c).append("` |"));
     out.append("\n|---|");

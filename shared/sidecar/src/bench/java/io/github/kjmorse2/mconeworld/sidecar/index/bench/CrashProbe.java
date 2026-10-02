@@ -1,18 +1,15 @@
 // SPDX-License-Identifier: MIT
-package io.github.kjmorse2.mconeworld.sidecar.index.spike.bench;
+package io.github.kjmorse2.mconeworld.sidecar.index.bench;
 
 import io.github.kjmorse2.mconeworld.domain.SeasonId;
 import io.github.kjmorse2.mconeworld.domain.coordinate.ChunkPosition;
 import io.github.kjmorse2.mconeworld.fixtures.index.ChunkDatasets;
 import io.github.kjmorse2.mconeworld.fixtures.index.ChunkRecordText;
+import io.github.kjmorse2.mconeworld.fixtures.index.IndexWorkloads;
 import io.github.kjmorse2.mconeworld.fixtures.index.ReferenceChunkIndex;
 import io.github.kjmorse2.mconeworld.fixtures.index.SyntheticWorld;
 import io.github.kjmorse2.mconeworld.sidecar.index.ChunkIndexReader;
 import io.github.kjmorse2.mconeworld.sidecar.index.ChunkMutation;
-import io.github.kjmorse2.mconeworld.sidecar.index.spike.Candidate;
-import io.github.kjmorse2.mconeworld.sidecar.index.spike.RegionLogIndex;
-import io.github.kjmorse2.mconeworld.sidecar.index.spike.SpikeIndex;
-import io.github.kjmorse2.mconeworld.sidecar.index.spike.Workload;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.ByteBuffer;
@@ -68,11 +65,11 @@ public final class CrashProbe {
     Path base = work.resolve("base");
     Files.createDirectories(base);
     SyntheticWorld world = ChunkDatasets.named("friend-server", SCALE);
-    try (SpikeIndex index = candidate.open(base)) {
-      Workload.bulkLoad(world, 5000, index);
+    try (BenchIndex index = candidate.open(base)) {
+      IndexWorkloads.bulkLoad(world, 5000, index);
     }
     String baseDigest;
-    try (SpikeIndex index = candidate.open(base);
+    try (BenchIndex index = candidate.open(base);
         ChunkIndexReader reader = index.reader()) {
       baseDigest = ChunkRecordText.digest(reader);
     }
@@ -121,7 +118,7 @@ public final class CrashProbe {
       commits += done;
       String acknowledged = done == 0 ? baseDigest : intents.get(done);
       String pending = lastIntent > done ? intents.get(lastIntent) : null;
-      try (SpikeIndex index = candidate.open(copy)) {
+      try (BenchIndex index = candidate.open(copy)) {
         index.verify();
         String actual;
         try (ChunkIndexReader reader = index.reader()) {
@@ -169,10 +166,10 @@ public final class CrashProbe {
   private static void writer(Candidate candidate, Path directory, Path logFile) throws Exception {
     SyntheticWorld world = ChunkDatasets.named("friend-server", SCALE);
     ReferenceChunkIndex reference = new ReferenceChunkIndex();
-    Workload.bulkLoad(world, 5000, reference);
+    IndexWorkloads.bulkLoad(world, 5000, reference);
     SplittableRandom random = new SplittableRandom(0x5EED);
     Set<ChunkPosition> removed = new HashSet<>();
-    try (SpikeIndex index = candidate.open(directory);
+    try (BenchIndex index = candidate.open(directory);
         FileChannel log =
             FileChannel.open(
                 logFile,
@@ -183,18 +180,18 @@ public final class CrashProbe {
       System.out.flush();
       for (int k = 1; ; k++) {
         List<ChunkMutation> batch =
-            Workload.updateBatch(
+            IndexWorkloads.updateBatch(
                 world, random, 200, SEASON, Instant.parse("2032-01-01T00:00:00Z"), removed);
-        Workload.applyAll(batch, reference);
+        IndexWorkloads.applyAll(batch, reference);
         String digest;
         try (ChunkIndexReader reader = reference.reader()) {
           digest = ChunkRecordText.digest(reader);
         }
         append(log, "INTENT " + k + " " + digest + "\n");
-        Workload.applyAll(batch, index);
+        IndexWorkloads.applyAll(batch, index);
         append(log, "DONE " + k + "\n");
-        if (index instanceof RegionLogIndex regionLog && k % 5 == 0) {
-          regionLog.checkpoint(); // kills also land inside checkpoints; state must not change
+        if (k % 5 == 0) {
+          index.checkpoint(); // kills also land inside checkpoints; state must not change
         }
       }
     }
@@ -213,7 +210,6 @@ public final class CrashProbe {
     List<String> command = new ArrayList<>();
     command.add(ProcessHandle.current().info().command().orElse("java"));
     command.add("-Xmx512m");
-    command.add("--enable-native-access=ALL-UNNAMED");
     command.add("-cp");
     command.add(System.getProperty("java.class.path"));
     command.add(CrashProbe.class.getName());

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-package io.github.kjmorse2.mconeworld.sidecar.index.spike.bench;
+package io.github.kjmorse2.mconeworld.sidecar.index.bench;
 
 import io.github.kjmorse2.mconeworld.domain.DimensionKey;
 import io.github.kjmorse2.mconeworld.domain.SeasonId;
@@ -7,6 +7,7 @@ import io.github.kjmorse2.mconeworld.domain.coordinate.ChunkPosition;
 import io.github.kjmorse2.mconeworld.domain.coordinate.ChunkRectangle;
 import io.github.kjmorse2.mconeworld.domain.provenance.ChunkProvenance;
 import io.github.kjmorse2.mconeworld.fixtures.index.ChunkDatasets;
+import io.github.kjmorse2.mconeworld.fixtures.index.IndexWorkloads;
 import io.github.kjmorse2.mconeworld.fixtures.index.SyntheticWorld;
 import io.github.kjmorse2.mconeworld.sidecar.index.ChunkCursor;
 import io.github.kjmorse2.mconeworld.sidecar.index.ChunkIndexBatch;
@@ -15,10 +16,6 @@ import io.github.kjmorse2.mconeworld.sidecar.index.ChunkIndexReader;
 import io.github.kjmorse2.mconeworld.sidecar.index.ChunkMutation;
 import io.github.kjmorse2.mconeworld.sidecar.index.ChunkQuery;
 import io.github.kjmorse2.mconeworld.sidecar.index.SeasonFilter;
-import io.github.kjmorse2.mconeworld.sidecar.index.spike.Candidate;
-import io.github.kjmorse2.mconeworld.sidecar.index.spike.RegionLogIndex;
-import io.github.kjmorse2.mconeworld.sidecar.index.spike.SpikeIndex;
-import io.github.kjmorse2.mconeworld.sidecar.index.spike.Workload;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.nio.file.Files;
@@ -90,8 +87,8 @@ public final class BenchmarkCase {
     Files.createDirectories(directory);
     long start = System.nanoTime();
     long records;
-    try (SpikeIndex index = candidate.open(directory)) {
-      records = Workload.bulkLoad(world, BUILD_BATCH, index);
+    try (BenchIndex index = candidate.open(directory)) {
+      records = IndexWorkloads.bulkLoad(world, BUILD_BATCH, index);
     }
     long nanos = System.nanoTime() - start;
     emit.metric("build.records", "count", records);
@@ -123,12 +120,12 @@ public final class BenchmarkCase {
     Set<ChunkPosition> removed = new HashSet<>();
     Instant at = Instant.parse("2031-01-01T00:00:00Z");
     for (int i = 0; i < 25; i++) {
-      updates.add(Workload.updateBatch(world, random, 1000, UPDATE_SEASON, at, removed));
+      updates.add(IndexWorkloads.updateBatch(world, random, 1000, UPDATE_SEASON, at, removed));
     }
 
     long baseline = liveHeapAfterGc();
     long start = System.nanoTime();
-    SpikeIndex index = candidate.open(directory);
+    BenchIndex index = candidate.open(directory);
     emit.metric("open.cold", "ms", (System.nanoTime() - start) / 1e6);
     index.close();
     start = System.nanoTime();
@@ -144,9 +141,9 @@ public final class BenchmarkCase {
         fullScan(reader);
       }
       updates(index, updates);
-      if (index instanceof RegionLogIndex log) {
+      {
         start = System.nanoTime();
-        log.checkpoint();
+        index.checkpoint();
         emit.metric("checkpoint.seconds", "s", (System.nanoTime() - start) / 1e9);
       }
       // Memory the open index keeps (caches, catalogs, bitmaps) after every workload above.
@@ -259,7 +256,7 @@ public final class BenchmarkCase {
     emit.rate("scan.full", records, System.nanoTime() - t);
   }
 
-  private void updates(SpikeIndex index, List<List<ChunkMutation>> batches)
+  private void updates(BenchIndex index, List<List<ChunkMutation>> batches)
       throws ChunkIndexException {
     Stats stats = new Stats();
     for (int i = 0; i < batches.size(); i++) {

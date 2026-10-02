@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
-package io.github.kjmorse2.mconeworld.sidecar.index.spike.bench;
+package io.github.kjmorse2.mconeworld.sidecar.index.bench;
 
 import io.github.kjmorse2.mconeworld.fixtures.index.ChunkDatasets;
-import io.github.kjmorse2.mconeworld.sidecar.index.spike.Candidate;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -163,7 +162,6 @@ public final class BenchmarkDriver {
     List<String> command = new ArrayList<>();
     command.add(ProcessHandle.current().info().command().orElse("java"));
     command.add(heap);
-    command.add("--enable-native-access=ALL-UNNAMED");
     command.add("-cp");
     command.add(System.getProperty("java.class.path"));
     command.add(main.getName());
