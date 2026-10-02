@@ -1,6 +1,7 @@
 // Root project: aggregation only. All Java conventions live in build-logic/ (ADR 0002).
 
 val sharedModules = listOf(":shared:domain", ":shared:sidecar", ":shared:protocol", ":shared:test-fixtures")
+val toolModules = listOf(":tool:world", ":tool:core", ":tool:app")
 
 tasks.register("sharedCheck") {
     group = "verification"
@@ -9,6 +10,14 @@ tasks.register("sharedCheck") {
             "plus build-logic's own tests. This is the CI entry point."
     dependsOn(sharedModules.map { "$it:check" })
     dependsOn(gradle.includedBuild("build-logic").task(":check"))
+}
+
+tasks.register("toolCheck") {
+    group = "verification"
+    description =
+        "Runs every MCOneWorld Tool check (tests including headless UI smoke tests, formatting, Error " +
+            "Prone/NullAway, tool architecture guards). See tool/AGENTS.md."
+    dependsOn(toolModules.map { "$it:check" })
 }
 
 // Machine-readable summary of the last shared test run and the built jars (Prompt 11 audit): per

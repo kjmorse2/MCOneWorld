@@ -4,15 +4,22 @@ package io.github.kjmorse2.mconeworld.buildlogic
  * Pure, Gradle-independent statement of the shared-module dependency rules from `shared/AGENTS.md`.
  *
  * Two independent checks consume these rules so a violation is caught whichever way it enters:
- *  - [VerifySharedDependencyGraph] inspects the *resolved Gradle graph* (declared dependencies).
- *  - [VerifySharedBytecode] inspects *compiled bytecode* via `jdeps` (actual package references,
+ *  - [VerifyModuleDependencies] inspects the *resolved Gradle graph* (declared dependencies).
+ *  - [VerifyModuleBytecode] inspects *compiled bytecode* via `jdeps` (actual package references,
  *    including fully qualified names and reflection-free constant-pool references that an
  *    import-statement scan would miss).
  *
  * Keep this file free of Gradle types so it can be unit tested directly.
  */
-object SharedArchitectureRules {
+object SharedArchitectureRules : ArchitectureRules {
     const val ROOT_PACKAGE = "io.github.kjmorse2.mconeworld"
+
+    override val family = "shared"
+
+    override val source = "shared/AGENTS.md"
+
+    /** Packages of the applications built on the shared modules; shared code never sees them. */
+    val applicationPackages: List<String> = listOf("$ROOT_PACKAGE.tool")
 
     /** Maven groups that no shared module may resolve, directly or transitively. */
     val bannedGroups: List<String> =
@@ -73,8 +80,14 @@ object SharedArchitectureRules {
      * Returns human-readable violations for one package-level edge `fromPackage -> toPackage`
      * found in [module]'s compiled classes, or an empty list if the edge is allowed.
      */
-    fun packageEdgeViolations(module: String, fromPackage: String, toPackage: String): List<String> {
+    override fun artifactViolations(module: String, group: String, displayName: String): List<String> =
+        if (isBannedGroup(group)) listOf("shared:$module resolves banned artifact $displayName") else emptyList()
+
+    override fun packageEdgeViolations(module: String, fromPackage: String, toPackage: String): List<String> {
         val violations = mutableListOf<String>()
+        applicationPackages
+            .firstOrNull { ArchitectureRules.isWithin(toPackage, it) }
+            ?.let { violations += "$fromPackage -> $toPackage (shared modules may not depend on application package '$it')" }
         val target = "$toPackage."
         bannedPackagePrefixes
             .firstOrNull { target.startsWith(it) }
@@ -92,7 +105,7 @@ object SharedArchitectureRules {
     }
 
     /** Violations for a resolved project dependency `:shared:<module> -> <projectPath>`. */
-    fun projectEdgeViolations(module: String, projectPath: String): List<String> {
+    override fun projectEdgeViolations(module: String, projectPath: String): List<String> {
         if (projectPath == ":shared:$module") return emptyList()
         val allowed = allowedSharedDependencies[module] ?: error("Unknown shared module '$module'")
         val other = projectPath.removePrefix(":shared:")
@@ -103,9 +116,6 @@ object SharedArchitectureRules {
         }
     }
 
-    private val jdepsEdge = Regex("""^\s+(\S+)\s+->\s+(\S+)\s+.*$""")
-
-    /** Parses `jdeps -verbose:package` output into `(fromPackage, toPackage)` pairs. */
-    fun parseJdepsPackageEdges(output: String): List<Pair<String, String>> =
-        output.lineSequence().mapNotNull { jdepsEdge.matchEntire(it) }.map { it.groupValues[1] to it.groupValues[2] }.toList()
+    /** Parses `jdeps -verbose:package` output; kept here for existing callers. */
+    fun parseJdepsPackageEdges(output: String): List<Pair<String, String>> = ArchitectureRules.parseJdepsPackageEdges(output)
 }

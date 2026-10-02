@@ -59,6 +59,8 @@ Pinned in `gradle/libs.versions.toml`.
 | Nullness checker | `com.uber.nullaway:nullaway` | `0.14.2` | MIT | build |
 | Benchmarks (not used) | `org.openjdk.jmh:jmh-core` | `1.37` | GPL-2.0 WITH Classpath-exception-2.0 | **not adopted** in Prompt 08. The chunk-index measurements are whole operations on disk-backed state, each case in its own fixed-heap JVM, so a small custom harness fits better than a microbenchmark framework (see [`docs/benchmarks/chunk-index/README.md`](../benchmarks/chunk-index/README.md)). |
 | Coverage (diagnostic) | JaCoCo (bundled with Gradle) | Gradle default for 9.8.0 | EPL-2.0 | build |
+| Tool UI | `org.openjfx:javafx-{base,graphics,controls}` | `25.0.4`, pinned (Tool T1) | GPL-2.0 WITH Classpath-exception-2.0 | `tool:app` only. One jar per platform (`linux`, `linux-aarch64`, `mac`, `mac-aarch64`, `win`); all five are locked and verified. |
+| Tool UI tests | `org.testfx:openjfx-monocle` | `21.0.2`, pinned (Tool T1) | GPL-2.0 WITH Classpath-exception-2.0 | `tool:app` test runtime only: headless JavaFX, verified to run JavaFX 25 with no display. JavaFX 25 has no built-in headless platform (26+ does). |
 
 **Chunk-index spike dependencies (Prompt 08), removed in Prompt 09.** `org.xerial:sqlite-jdbc` 3.53.4.0, `org.roaringbitmap:RoaringBitmap` 1.6.23, and `com.h2database:h2-mvstore` 2.5.252 were on the `bench` classpath only, while ADR 0007 was undecided. The accepted encoding uses only the JDK, so they were removed (owner decision D4), along with their lockfile and verification-metadata entries. Paper's own server classpath carries `sqlite-jdbc` 3.49.1.0 (`paper-server/build.gradle.kts`, checked 2026-09-30); MCOneWorld does not use it.
 

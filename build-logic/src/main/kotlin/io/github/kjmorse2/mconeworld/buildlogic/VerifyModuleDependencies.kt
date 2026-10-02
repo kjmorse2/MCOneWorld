@@ -14,13 +14,16 @@ import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
 
 /**
- * Fails if a shared module's *production* classpaths (compile and runtime of the `main` source set)
- * resolve a banned platform group or a forbidden shared project, including `:shared:test-fixtures`.
+ * Fails if a module's *production* classpaths (compile and runtime of the `main` source set)
+ * resolve a banned artifact or a project its rule family ([ArchitectureRules]) forbids.
  *
- * Test classpaths are deliberately not inspected: tests may use `test-fixtures` (shared/AGENTS.md).
+ * Test classpaths are deliberately not inspected: tests may use `test-fixtures`.
  */
-abstract class VerifySharedDependencyGraph : DefaultTask() {
-    /** Shared module name, e.g. `domain`. */
+abstract class VerifyModuleDependencies : DefaultTask() {
+    /** Rule family: `shared` or `tool` (see [ArchitectureRules.named]). */
+    @get:Input abstract val ruleFamily: Property<String>
+
+    /** Module name within the family, e.g. `domain` or `core`. */
     @get:Input abstract val moduleName: Property<String>
 
     /** Root components of the resolved production classpaths (configuration-cache compatible). */
@@ -31,6 +34,7 @@ abstract class VerifySharedDependencyGraph : DefaultTask() {
     @TaskAction
     fun verify() {
         val module = moduleName.get()
+        val rules = ArchitectureRules.named(ruleFamily.get())
         val violations = sortedSetOf<String>()
         val seen = sortedSetOf<String>()
         for (root in productionRoots.get()) {
@@ -38,13 +42,11 @@ abstract class VerifySharedDependencyGraph : DefaultTask() {
                 when (val id = component.id) {
                     is ModuleComponentIdentifier -> {
                         seen += "${id.group}:${id.module}:${id.version}"
-                        if (SharedArchitectureRules.isBannedGroup(id.group)) {
-                            violations += "shared:$module resolves banned artifact ${id.displayName}"
-                        }
+                        violations += rules.artifactViolations(module, id.group, id.displayName)
                     }
                     is ProjectComponentIdentifier -> {
                         seen += "project ${id.projectPath}"
-                        violations += SharedArchitectureRules.projectEdgeViolations(module, id.projectPath)
+                        violations += rules.projectEdgeViolations(module, id.projectPath)
                     }
                     else -> seen += id.displayName
                 }
@@ -52,7 +54,7 @@ abstract class VerifySharedDependencyGraph : DefaultTask() {
         }
         report.get().asFile.writeText(
             buildString {
-                appendLine("shared:$module production dependency graph")
+                appendLine("${rules.family}:$module production dependency graph")
                 seen.forEach { appendLine("  $it") }
                 appendLine(if (violations.isEmpty()) "OK" else "VIOLATIONS:")
                 violations.forEach { appendLine("  $it") }
@@ -60,7 +62,7 @@ abstract class VerifySharedDependencyGraph : DefaultTask() {
         )
         if (violations.isNotEmpty()) {
             throw GradleException(
-                "Shared dependency rules violated (see shared/AGENTS.md):\n  " + violations.joinToString("\n  "),
+                "${rules.family} dependency rules violated (see ${rules.source}):\n  " + violations.joinToString("\n  "),
             )
         }
     }

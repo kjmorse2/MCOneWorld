@@ -6,6 +6,7 @@
 /build-logic/.kotlin/
 /.kotlin/
 /shared/*/build/
+/tool/*/build/
 
 # IDEs
 /.idea/

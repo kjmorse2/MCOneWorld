@@ -2,8 +2,8 @@
 // shared/AGENTS.md: dependency direction between shared modules, no platform dependencies, and
 // no production dependency on :shared:test-fixtures.
 
-import io.github.kjmorse2.mconeworld.buildlogic.VerifySharedBytecode
-import io.github.kjmorse2.mconeworld.buildlogic.VerifySharedDependencyGraph
+import io.github.kjmorse2.mconeworld.buildlogic.VerifyModuleBytecode
+import io.github.kjmorse2.mconeworld.buildlogic.VerifyModuleDependencies
 
 plugins { id("mconeworld.java-conventions") }
 
@@ -12,7 +12,8 @@ base.archivesName = "mconeworld-shared-${project.name}"
 val sharedModule = project.name
 
 val verifySharedDependencies =
-    tasks.register<VerifySharedDependencyGraph>("verifySharedDependencies") {
+    tasks.register<VerifyModuleDependencies>("verifySharedDependencies") {
+        ruleFamily = "shared"
         group = "verification"
         description = "Fails if production classpaths resolve banned or out-of-direction dependencies."
         moduleName = sharedModule
@@ -22,7 +23,9 @@ val verifySharedDependencies =
     }
 
 val verifySharedBytecode =
-    tasks.register<VerifySharedBytecode>("verifySharedBytecode") {
+    tasks.register<VerifyModuleBytecode>("verifySharedBytecode") {
+        ruleFamily = "shared"
+        release = 21
         group = "verification"
         description = "Runs jdeps on main classes and fails on forbidden package references."
         moduleName = sharedModule

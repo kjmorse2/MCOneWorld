@@ -13,6 +13,8 @@ nullaway = "0.14.2"
 google-java-format = "1.36.1"
 spotless-plugin = "8.10.3"
 errorprone-plugin = "5.1.1"
+javafx = "25.0.4"             # MCOneWorld Tool UI only (ADR 0009); platform classifier chosen per OS
+monocle = "21.0.2"           # Tool UI tests only: headless JavaFX (verified to run JavaFX 25 without a display)
 
 [libraries]
 jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
@@ -24,6 +26,11 @@ assertj-core = { module = "org.assertj:assertj-core", version.ref = "assertj" }
 jqwik = { module = "net.jqwik:jqwik", version.ref = "jqwik" }
 errorprone-core = { module = "com.google.errorprone:error_prone_core", version.ref = "errorprone" }
 nullaway = { module = "com.uber.nullaway:nullaway", version.ref = "nullaway" }
+
+javafx-base = { module = "org.openjfx:javafx-base", version.ref = "javafx" }
+javafx-graphics = { module = "org.openjfx:javafx-graphics", version.ref = "javafx" }
+javafx-controls = { module = "org.openjfx:javafx-controls", version.ref = "javafx" }
+monocle = { module = "org.testfx:openjfx-monocle", version.ref = "monocle" }
 
 # Gradle plugins consumed as libraries by build-logic's precompiled convention plugins.
 plugin-spotless = { module = "com.diffplug.spotless:spotless-plugin-gradle", version.ref = "spotless-plugin" }

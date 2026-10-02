@@ -21,11 +21,11 @@ trap 'rm -rf "$work"' EXIT
 
 (cd "$repo" && tar --exclude=./.git --exclude=./offline-tool --exclude=./.gradle --exclude=./build \
     --exclude=./build-logic/.gradle --exclude=./build-logic/.kotlin --exclude=./build-logic/build \
-    --exclude='./shared/*/build' -cf - .) | tar -xf - -C "$work"
+    --exclude='./shared/*/build' --exclude='./tool/*/build' -cf - .) | tar -xf - -C "$work"
 
 rm -f "$work/gradle/verification-metadata.xml"
 (cd "$work" && ./gradlew --no-configuration-cache --continue --write-verification-metadata sha256 \
-    resolveAndLockAll --write-locks sharedCheck) > "$work/refresh.log" 2>&1 || true
+    resolveAndLockAll --write-locks sharedCheck toolCheck) > "$work/refresh.log" 2>&1 || true
 
 if ! grep -q '<component ' "$work/gradle/verification-metadata.xml" 2>/dev/null; then
   echo "Verification metadata was not produced; see log:" >&2

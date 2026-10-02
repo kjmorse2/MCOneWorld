@@ -17,15 +17,21 @@ import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
 
 /**
- * Architecture test over compiled bytecode: runs the JDK's `jdeps` on a shared module's main
- * classes and fails on any package-level reference to a banned platform package or a forbidden
- * shared module. This catches references that never appear as `import` statements.
+ * Architecture test over compiled bytecode: runs the JDK's `jdeps` on a module's main classes and
+ * fails on any package-level reference its rule family ([ArchitectureRules]) forbids. This catches
+ * references that never appear as `import` statements.
  *
  * `jdeps` is obtained through [ToolProvider] from the JDK running Gradle, which must be a full JDK
  * (the repository requires JDK 25; see README.md).
  */
-abstract class VerifySharedBytecode : DefaultTask() {
+abstract class VerifyModuleBytecode : DefaultTask() {
+    /** Rule family: `shared` or `tool` (see [ArchitectureRules.named]). */
+    @get:Input abstract val ruleFamily: Property<String>
+
     @get:Input abstract val moduleName: Property<String>
+
+    /** The Java release the classes target; multi-release jars are analysed as that release. */
+    @get:Input abstract val release: Property<Int>
 
     @get:InputFiles
     @get:PathSensitive(PathSensitivity.RELATIVE)
@@ -38,18 +44,19 @@ abstract class VerifySharedBytecode : DefaultTask() {
     @TaskAction
     fun verify() {
         val module = moduleName.get()
+        val rules = ArchitectureRules.named(ruleFamily.get())
         val dirs = classesDirs.files.filter { it.isDirectory && (it.list()?.isNotEmpty() ?: false) }
         if (dirs.isEmpty()) {
-            report.get().asFile.writeText("shared:$module has no compiled classes\n")
+            report.get().asFile.writeText("${rules.family}:$module has no compiled classes\n")
             return
         }
         val jdeps =
             ToolProvider.findFirst("jdeps").orElseThrow {
                 GradleException("jdeps is unavailable: run Gradle on a full JDK 25, not a JRE.")
             }
-        // Dependencies such as jackson-core are multi-release jars; analyse them as the Java 21
-        // release that shared modules target (ADR 0002).
-        val args = mutableListOf("-verbose:package", "--multi-release", "21")
+        // Dependencies such as jackson-core are multi-release jars; analyse them as the release the
+        // module targets (21 for shared modules, ADR 0002; 25 for the Tool).
+        val args = mutableListOf("-verbose:package", "--multi-release", release.get().toString())
         val cp = classpath.files.filter { it.exists() }
         if (cp.isNotEmpty()) {
             args += listOf("--class-path", cp.joinToString(java.io.File.pathSeparator))
@@ -63,11 +70,11 @@ abstract class VerifySharedBytecode : DefaultTask() {
             throw GradleException("jdeps failed with exit code $exit:\n$err\n$out")
         }
 
-        val edges = SharedArchitectureRules.parseJdepsPackageEdges(out.toString())
-        val violations = edges.flatMap { (from, to) -> SharedArchitectureRules.packageEdgeViolations(module, from, to) }.toSortedSet()
+        val edges = ArchitectureRules.parseJdepsPackageEdges(out.toString())
+        val violations = edges.flatMap { (from, to) -> rules.packageEdgeViolations(module, from, to) }.toSortedSet()
         report.get().asFile.writeText(
             buildString {
-                appendLine("shared:$module bytecode package references (jdeps -verbose:package)")
+                appendLine("${rules.family}:$module bytecode package references (jdeps -verbose:package)")
                 edges.map { (from, to) -> "  $from -> $to" }.toSortedSet().forEach { appendLine(it) }
                 appendLine(if (violations.isEmpty()) "OK" else "VIOLATIONS:")
                 violations.forEach { appendLine("  $it") }
@@ -75,7 +82,7 @@ abstract class VerifySharedBytecode : DefaultTask() {
         )
         if (violations.isNotEmpty()) {
             throw GradleException(
-                "Shared bytecode references forbidden packages (see shared/AGENTS.md):\n  " + violations.joinToString("\n  "),
+                "${rules.family} bytecode references forbidden packages (see ${rules.source}):\n  " + violations.joinToString("\n  "),
             )
         }
     }

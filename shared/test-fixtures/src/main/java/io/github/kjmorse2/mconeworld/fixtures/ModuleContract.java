@@ -6,7 +6,8 @@ import java.io.InputStream;
 import org.jspecify.annotations.NullMarked;
 
 /**
- * Build-contract assertions every shared module verifies in its smoke test.
+ * Build-contract assertions every shared module, and every MCOneWorld Tool module, verifies in its
+ * smoke test.
  *
  * <p>Two properties are checked because consumers silently depend on them:
  *
@@ -21,6 +22,9 @@ public final class ModuleContract {
   /** Class-file major version emitted for {@code --release 21} (JVMS §4.1). */
   public static final int JAVA_21_CLASS_FILE_MAJOR = 65;
 
+  /** Class-file major version emitted for {@code --release 25}: the Tool's modules (ADR 0009). */
+  public static final int JAVA_25_CLASS_FILE_MAJOR = 69;
+
   private static final int CLASS_FILE_MAGIC = 0xCAFEBABE;
 
   private ModuleContract() {}
@@ -32,6 +36,16 @@ public final class ModuleContract {
    * @throws AssertionError if either property does not hold or the package has no package-info
    */
   public static void assertSharedPackageContract(String packageName) {
+    assertPackageContract(packageName, JAVA_21_CLASS_FILE_MAJOR);
+  }
+
+  /**
+   * Asserts that {@code packageName} has a {@code package-info} annotated {@code @NullMarked} and
+   * compiled to class-file major version {@code expectedMajor}.
+   *
+   * @throws AssertionError if either property does not hold or the package has no package-info
+   */
+  public static void assertPackageContract(String packageName, int expectedMajor) {
     Class<?> packageInfo;
     try {
       packageInfo = Class.forName(packageName + ".package-info");
@@ -42,15 +56,14 @@ public final class ModuleContract {
       throw new AssertionError("Package " + packageName + " is not @NullMarked");
     }
     int major = classFileMajorVersion(readClassFile(packageInfo));
-    if (major != JAVA_21_CLASS_FILE_MAJOR) {
+    if (major != expectedMajor) {
       throw new AssertionError(
           "Package "
               + packageName
               + " compiled to class-file major "
               + major
               + ", expected "
-              + JAVA_21_CLASS_FILE_MAJOR
-              + " (--release 21)");
+              + expectedMajor);
     }
   }
 

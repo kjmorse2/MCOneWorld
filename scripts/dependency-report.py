@@ -24,7 +24,8 @@ import xml.etree.ElementTree as ET
 
 CACHE = os.path.join(os.environ.get("GRADLE_USER_HOME", os.path.expanduser("~/.gradle")),
                      "caches/modules-2/files-2.1")
-PERMISSIVE = re.compile(r"apache|mit|bsd|public domain", re.I)
+# GPL-2.0 with the Classpath Exception (JavaFX) may ship: the exception permits linking from MIT code.
+PERMISSIVE = re.compile(r"apache|mit|bsd|public domain|classpath exception|gplv2\+ce", re.I)
 
 
 def tag(element):
@@ -58,7 +59,8 @@ def scope(uses):
         if module == "build-logic" or "errorprone" in configuration.lower() \
                 or "annotationProcessor" in configuration:
             out.add("build tooling")
-        elif configuration in ("runtimeClasspath", "compileClasspath") and module != "test-fixtures":
+        elif configuration in ("runtimeClasspath", "compileClasspath", "javafxAllPlatforms") \
+                and module != "test-fixtures":
             out.add("production")
         elif configuration.startswith("bench"):
             out.add("benchmark")
@@ -74,8 +76,9 @@ def main():
     args = parser.parse_args()
     os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
     uses = {}
-    for lockfile in sorted(["build-logic/gradle.lockfile"] + glob.glob("shared/*/gradle.lockfile")):
-        module = lockfile.split("/")[-2] if lockfile.startswith("shared") else "build-logic"
+    for lockfile in sorted(["build-logic/gradle.lockfile"] + glob.glob("shared/*/gradle.lockfile")
+                           + glob.glob("tool/*/gradle.lockfile")):
+        module = lockfile.split("/")[-2] if not lockfile.startswith("build-logic") else "build-logic"
         for line in open(lockfile):
             line = line.strip()
             if not line or line.startswith("#") or line.startswith("empty="):

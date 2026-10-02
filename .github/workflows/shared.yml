@@ -23,7 +23,7 @@ jobs:
           java-version: '25.0.4'
       # Runs tests, spotless, Error Prone/NullAway, architecture guards, build-logic tests.
       # Dependency verification (gradle/verification-metadata.xml) and strict locking apply.
-      - run: ./gradlew --no-daemon sharedCheck assemble
+      - run: ./gradlew --no-daemon sharedCheck toolCheck assemble
       - name: Test and artifact summary
         run: ./gradlew --no-daemon sharedTestSummary
       - name: Consumer examples (offline tool, Paper and Fabric adapters, no platform dependencies)
