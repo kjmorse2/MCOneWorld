@@ -1,0 +1,283 @@
+// SPDX-License-Identifier: MIT
+package io.github.kjmorse2.mconeworld.tool.core.session;
+
+import io.github.kjmorse2.mconeworld.domain.OperationId;
+import io.github.kjmorse2.mconeworld.domain.validation.IssueLocation;
+import io.github.kjmorse2.mconeworld.domain.validation.ValidationIssue;
+import io.github.kjmorse2.mconeworld.domain.validation.ValidationResult;
+import io.github.kjmorse2.mconeworld.sidecar.index.ChunkIndexStatus;
+import io.github.kjmorse2.mconeworld.sidecar.index.ChunkIndexStore;
+import io.github.kjmorse2.mconeworld.sidecar.manifest.DecodedManifest;
+import io.github.kjmorse2.mconeworld.sidecar.manifest.ManifestCodec;
+import io.github.kjmorse2.mconeworld.sidecar.manifest.ManifestException;
+import io.github.kjmorse2.mconeworld.sidecar.manifest.ManifestLimits;
+import io.github.kjmorse2.mconeworld.sidecar.migration.MigrationException;
+import io.github.kjmorse2.mconeworld.sidecar.migration.MigrationPlanner;
+import io.github.kjmorse2.mconeworld.sidecar.migration.MigrationRegistry;
+import io.github.kjmorse2.mconeworld.sidecar.operation.OperationJournals;
+import io.github.kjmorse2.mconeworld.sidecar.operation.OperationStatus;
+import io.github.kjmorse2.mconeworld.sidecar.storage.RecoveryFinding;
+import io.github.kjmorse2.mconeworld.sidecar.storage.RecoveryReport;
+import io.github.kjmorse2.mconeworld.sidecar.storage.SidecarRoot;
+import io.github.kjmorse2.mconeworld.sidecar.storage.SidecarStore;
+import io.github.kjmorse2.mconeworld.tool.world.WorldInspection;
+import io.github.kjmorse2.mconeworld.tool.world.WorldInspector;
+import java.io.IOException;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
+import java.time.Clock;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Inspects a world and its sidecar together, read-only, and decides which {@link SessionAction}s
+ * can start. Every blocker is a {@link ValidationIssue} with remediation, so the UI and the command
+ * line explain a disabled action the same way.
+ */
+public final class ToolSession {
+  private ToolSession() {}
+
+  /**
+   * Inspects {@code locations}. Nothing is written, locked, recovered, or migrated.
+   *
+   * @throws io.github.kjmorse2.mconeworld.tool.world.WorldException if the world directory is not a
+   *     readable world
+   * @throws IOException if a directory cannot be read
+   */
+  public static SessionStatus inspect(ToolLocations locations, Clock clock) throws IOException {
+    WorldInspection world = WorldInspector.inspect(locations.worldDir());
+    Optional<ValidationIssue> overlap = locations.overlap();
+    SidecarSnapshot sidecar =
+        overlap.isPresent()
+            ? new SidecarSnapshot(
+                SidecarState.UNREADABLE,
+                Optional.empty(),
+                Optional.empty(),
+                Optional.empty(),
+                List.of(),
+                ValidationResult.of(List.of(overlap.get())))
+            : sidecar(locations.sidecarDir(), clock);
+    List<ValidationIssue> all = new ArrayList<>(world.findings().issues());
+    all.addAll(sidecar.findings().issues());
+    return new SessionStatus(
+        locations, world, sidecar, actions(world, sidecar), ValidationResult.of(all));
+  }
+
+  private static SidecarSnapshot sidecar(Path dir, Clock clock) throws IOException {
+    if (!Files.exists(dir, LinkOption.NOFOLLOW_LINKS)) {
+      return empty(SidecarState.ABSENT, List.of());
+    }
+    if (Files.isSymbolicLink(dir) || !Files.isDirectory(dir, LinkOption.NOFOLLOW_LINKS)) {
+      return empty(
+          SidecarState.UNREADABLE,
+          List.of(
+              ValidationIssue.error(
+                  SessionIssueCodes.SIDECAR_UNREADABLE,
+                  IssueLocation.root(),
+                  "The sidecar location is not a plain directory")));
+    }
+    SidecarStore store = SidecarStore.open(SidecarRoot.open(dir));
+    RecoveryReport recovery = store.inspect();
+    List<ValidationIssue> findings = new ArrayList<>();
+    for (RecoveryFinding finding : recovery.findings()) {
+      findings.add(
+          ValidationIssue.warning(
+                  finding.code(),
+                  IssueLocation.root().key(finding.stagingEntry()),
+                  finding.message())
+              .withRemediation(
+                  finding.automaticallyRecoverable()
+                      ? "Run Recover to finish or undo the interrupted commit."
+                      : "This needs a person: see the sidecar storage documentation."));
+    }
+    if (!store.hasManifest()) {
+      boolean empty;
+      try (DirectoryStream<Path> entries = Files.newDirectoryStream(dir)) {
+        empty = !entries.iterator().hasNext();
+      }
+      if (empty) {
+        return new SidecarSnapshot(
+            SidecarState.EMPTY,
+            Optional.empty(),
+            Optional.of(recovery),
+            Optional.empty(),
+            List.of(),
+            ValidationResult.of(findings));
+      }
+      findings.add(
+          ValidationIssue.error(
+                  SessionIssueCodes.SIDECAR_INCOMPLETE,
+                  IssueLocation.root().key("manifest.json"),
+                  "The sidecar directory has files but no manifest")
+              .withRemediation(
+                  "The Tool never creates a sidecar over existing files. Restore the manifest from a"
+                      + " backup, or choose an empty directory."));
+      return new SidecarSnapshot(
+          SidecarState.INCOMPLETE,
+          Optional.empty(),
+          Optional.of(recovery),
+          Optional.empty(),
+          List.of(),
+          ValidationResult.of(findings));
+    }
+
+    DecodedManifest manifest;
+    try {
+      manifest = store.readManifest();
+    } catch (ManifestException e) {
+      SidecarState state =
+          migratable(store) ? SidecarState.NEEDS_MIGRATION : SidecarState.UNREADABLE;
+      findings.add(
+          ValidationIssue.error(
+                  state == SidecarState.NEEDS_MIGRATION
+                      ? SessionIssueCodes.MIGRATION_NEEDED
+                      : SessionIssueCodes.SIDECAR_UNREADABLE,
+                  IssueLocation.root().key("manifest.json"),
+                  "The manifest cannot be used as is: " + e.getMessage())
+              .withRemediation(
+                  state == SidecarState.NEEDS_MIGRATION
+                      ? "Run Migrate: it backs up the manifest, then converts it explicitly."
+                      : "Use a version of the Tool that reads this manifest, or restore a backup.")
+              .withCause(e));
+      return new SidecarSnapshot(
+          state,
+          Optional.empty(),
+          Optional.of(recovery),
+          Optional.empty(),
+          List.of(),
+          ValidationResult.of(findings));
+    }
+    findings.addAll(manifest.warnings().issues());
+
+    ChunkIndexStatus index = ChunkIndexStore.of(store).inspect();
+    findings.addAll(index.findings().issues());
+
+    OperationJournals journals = OperationJournals.of(store, clock);
+    List<OperationStatus> operations = new ArrayList<>();
+    for (OperationId id : journals.list()) {
+      operations.add(journals.inspect(id));
+    }
+    return new SidecarSnapshot(
+        SidecarState.PRESENT,
+        Optional.of(manifest),
+        Optional.of(recovery),
+        Optional.of(index),
+        operations,
+        ValidationResult.of(findings));
+  }
+
+  /** Whether an explicit migration path to the current schema exists (read-only dry run). */
+  private static boolean migratable(SidecarStore store) throws IOException {
+    try {
+      new MigrationPlanner(MigrationRegistry.builtIn(), ManifestLimits.DEFAULT)
+          .plan(store, ManifestCodec.CURRENT);
+      return true;
+    } catch (MigrationException e) {
+      return false;
+    }
+  }
+
+  private static SidecarSnapshot empty(SidecarState state, List<ValidationIssue> findings) {
+    return new SidecarSnapshot(
+        state,
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty(),
+        List.of(),
+        ValidationResult.of(findings));
+  }
+
+  // ---- action rules ---------------------------------------------------------------------------
+
+  private static List<ActionAvailability> actions(WorldInspection world, SidecarSnapshot sidecar) {
+    List<ActionAvailability> out = new ArrayList<>();
+    for (SessionAction action : SessionAction.values()) {
+      out.add(new ActionAvailability(action, blockers(action, world, sidecar)));
+    }
+    return out;
+  }
+
+  private static List<ValidationIssue> blockers(
+      SessionAction action, WorldInspection world, SidecarSnapshot sidecar) {
+    // Every action writes the sidecar, so every action needs its writer lock to be free.
+    List<ValidationIssue> b = new ArrayList<>();
+    switch (action) {
+      case INITIALIZE_SIDECAR -> {
+        if (sidecar.state() != SidecarState.ABSENT && sidecar.state() != SidecarState.EMPTY) {
+          b.add(
+              block(
+                  SessionIssueCodes.SIDECAR_INCOMPLETE,
+                  "A sidecar (or other files) already exists here"));
+        }
+        serverStopped(world, b);
+      }
+      case RECOVER_SIDECAR -> {
+        if (sidecar.recovery().map(r -> r.findings().isEmpty()).orElse(true)) {
+          b.add(block(SessionIssueCodes.RECOVERY_NEEDED, "There is nothing to recover"));
+        }
+      }
+      case MIGRATE_MANIFEST -> {
+        if (sidecar.state() != SidecarState.NEEDS_MIGRATION) {
+          b.add(block(SessionIssueCodes.MIGRATION_NEEDED, "The manifest needs no migration"));
+        }
+      }
+      case RECONCILE, BACKUP, NEW_SEASON -> {
+        usableSidecar(sidecar, b);
+        serverStopped(world, b);
+        if (action == SessionAction.NEW_SEASON) {
+          b.addAll(world.support().reasons());
+        }
+      }
+    }
+    if (sidecar.lockedByAnotherProcess()) {
+      b.add(
+          block(SessionIssueCodes.SIDECAR_LOCKED, "Another process holds the sidecar writer lock")
+              .withRemediation(
+                  "Stop the Minecraft server (the plugin holds the lock while it runs)."));
+    }
+    return b;
+  }
+
+  private static void usableSidecar(SidecarSnapshot sidecar, List<ValidationIssue> b) {
+    if (sidecar.state() != SidecarState.PRESENT) {
+      b.add(
+          block(
+              SessionIssueCodes.SIDECAR_UNREADABLE,
+              "No usable sidecar (state " + sidecar.state() + ")"));
+      return;
+    }
+    if (sidecar.recovery().map(r -> !r.findings().isEmpty()).orElse(false)) {
+      b.add(
+          block(SessionIssueCodes.RECOVERY_NEEDED, "An interrupted commit must be recovered first")
+              .withRemediation("Run Recover."));
+    }
+    if (!sidecar.index().map(ChunkIndexStatus::usable).orElse(false)) {
+      b.add(block(SessionIssueCodes.INDEX_UNUSABLE, "The chunk index is missing or damaged"));
+    }
+    for (OperationStatus op : sidecar.unfinishedOperations()) {
+      b.add(
+          block(
+                  SessionIssueCodes.OPERATION_UNFINISHED,
+                  "Operation " + op.operation() + " is unfinished (" + op.integrity() + ")")
+              .withRemediation(op.recommendation().explanation()));
+    }
+  }
+
+  private static void serverStopped(WorldInspection world, List<ValidationIssue> b) {
+    if (!world.lock().allowsWrites()) {
+      b.add(
+          block(
+                  SessionIssueCodes.SERVER_RUNNING,
+                  "Minecraft has the world open (session.lock is " + world.lock() + ")")
+              .withRemediation("Stop the server or close the game, then refresh."));
+    }
+  }
+
+  private static ValidationIssue block(
+      io.github.kjmorse2.mconeworld.domain.validation.IssueCode code, String message) {
+    return ValidationIssue.error(code, IssueLocation.root(), message);
+  }
+}

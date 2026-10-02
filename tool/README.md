@@ -10,7 +10,16 @@ The offline desktop application of MCOneWorld (JavaFX 25, Java 25). With the ser
   - [ADR 0011](../docs/decisions/0011-offline-season-activation.md): offline activation
   - [ADR 0012](../docs/decisions/0012-backup-format.md): backups
 
-**Status:** T2, read-only world access. `tool/world` reads `level.dat`, the dimension layout, region headers, and `session.lock`, and decides whether a world is writable (only 26.2 on the verified layout). It was validated against two real 26.2 worlds (`docs/compatibility/world-format-26.2.md`). The app still opens an empty main window.
+**Status:** T2, read-only world access. `tool/world` reads `level.dat`, the dimension layout, region headers, and `session.lock`, and decides whether a world is writable (only 26.2 on the verified layout). It was validated against two real 26.2 worlds (`docs/compatibility/world-format-26.2.md`).
+
+T3, session status. `tool/core`'s `ToolSession.inspect(locations, clock)` opens a world together with its sidecar (by default `mconeworld-data` beside the world), read-only. It reports:
+
+- the world inspection
+- the sidecar state: absent, empty, incomplete, present, needs migration, or unreadable
+- recovery leftovers, the chunk index, and the operation journals
+- for every action, whether it can start, or each reason it can't (server running, sidecar locked, recovery needed, unfinished operation, version not pinned, and so on)
+
+The world-binding check arrives with manifest 1.1 in T4. The app still opens an empty main window.
 
 ```sh
 ./gradlew toolCheck          # tests (UI tests run headless through Monocle), formatting, analysis, guards

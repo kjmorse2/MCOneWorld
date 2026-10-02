@@ -7,4 +7,5 @@ dependencies {
     api(project(":shared:domain"))
     api(project(":shared:sidecar"))
     testImplementation(project(":shared:test-fixtures"))
+    testImplementation(testFixtures(project(":tool:world")))
 }
