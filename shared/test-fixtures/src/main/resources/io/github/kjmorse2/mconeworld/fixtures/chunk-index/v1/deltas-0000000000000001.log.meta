@@ -1,0 +1,5 @@
+# Golden fixture metadata (shared/AGENTS.md "Golden files include format version and expected checksum").
+# Produced by ChunkIndexFixtures.main (writeGoldenIndex, then ChunkIndexExport.write); reviewed by hand before pinning.
+format=mconeworld-chunk-index
+version=1.0
+sha256=4cdc88021f5e952f3606d853790918d11950eaa4e6924bed1c2299a224bf3cf9

@@ -72,3 +72,19 @@ tasks.register<JavaExec>("benchSummarize") {
     workingDir = rootDir
     args((providers.gradleProperty("bench.args").orNull ?: "").split(" ").filter { it.isNotBlank() })
 }
+
+// Bounded-memory regression (Prompt 09): a million-record chunk index must be built, scanned,
+// updated, verified, and reopened inside 128 MiB. Tagged "memory" and kept out of `test`.
+tasks.named<Test>("test") { useJUnitPlatform { excludeTags("memory") } }
+
+val indexMemoryTest =
+    tasks.register<Test>("indexMemoryTest") {
+        group = "verification"
+        description = "Runs the chunk index's bounded-memory test in a JVM capped at 128 MiB."
+        testClassesDirs = sourceSets.test.get().output.classesDirs
+        classpath = sourceSets.test.get().runtimeClasspath
+        useJUnitPlatform { includeTags("memory") }
+        maxHeapSize = "128m"
+    }
+
+tasks.named("check") { dependsOn(indexMemoryTest) }

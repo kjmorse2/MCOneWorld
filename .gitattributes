@@ -5,5 +5,6 @@
 # Golden fixtures and published format examples are byte-exact; never let Git rewrite line endings.
 /shared/test-fixtures/src/main/resources/**/*.json  binary
 /shared/test-fixtures/src/main/resources/**/*.jsonl binary
+/shared/test-fixtures/src/main/resources/**/chunk-index/** binary
 /docs/formats/examples/*.json                       binary
 /docs/formats/examples/*.jsonl                      binary
