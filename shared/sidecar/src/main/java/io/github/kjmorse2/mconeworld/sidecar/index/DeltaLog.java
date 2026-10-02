@@ -31,12 +31,12 @@ import java.util.UUID;
  *              5 Remove
  * </pre>
  *
- * <p><b>Torn tail versus corruption.</b> Only an <em>incomplete</em> final frame is a torn tail:
- * fewer bytes than a frame header remain, or a valid header's payload runs past the end of the
- * file. It is a commit that was never acknowledged, and is ignored. A header-checksum mismatch, or
- * a complete frame whose payload checksum fails, is corruption wherever it is, because treating it
- * as a tail would silently drop acknowledged commits after it (the Prompt 08 probe found exactly
- * that).
+ * <p><b>Torn tail versus corruption.</b> Only an <em>incomplete</em> header or final frame is a
+ * torn tail: fewer bytes than a frame header remain, or a valid header's payload runs past the end
+ * of the file. It is a commit that was never acknowledged, and is ignored. A header-checksum
+ * mismatch, or a complete frame whose payload checksum fails, is corruption wherever it is, because
+ * treating it as a tail would silently drop acknowledged commits after it (the Prompt 08 probe
+ * found exactly that).
  */
 final class DeltaLog {
   private DeltaLog() {}
@@ -50,8 +50,9 @@ final class DeltaLog {
       long validEnd,
       long size,
       int tailCrc) {
+    /** Whether the file continues past its complete frames, or lacks a complete header. */
     boolean tornTail() {
-      return validEnd != size;
+      return validEnd != size || validEnd < IndexFormat.HEADER_BYTES;
     }
   }
 
@@ -67,7 +68,14 @@ final class DeltaLog {
    * @throws ChunkIndexException {@code LOG_CORRUPT}, {@code HEADER_CORRUPT}, {@code
    *     UNSUPPORTED_VERSION}, or {@code TOO_LARGE} if the replay would exceed {@code maxMutations}
    */
-  static Replay replay(byte[] bytes, String scope, int maxMutations) throws ChunkIndexException {
+  static Replay replay(
+      byte[] bytes, String scope, int maxMutations, java.util.UUID expectedIndex, long generation)
+      throws ChunkIndexException {
+    if (bytes.length < IndexFormat.HEADER_BYTES) {
+      // The log's creation was interrupted before its header was complete, so no commit can be in
+      // it: a torn tail like any other, never corruption.
+      return new Replay(expectedIndex, generation, false, Overlay.EMPTY, 0, bytes.length, 0);
+    }
     IndexFormat.FileHeader header =
         IndexFormat.readHeader(bytes, 0, bytes.length, IndexFormat.LOG_MAGIC, scope);
     Overlay overlay = Overlay.EMPTY;

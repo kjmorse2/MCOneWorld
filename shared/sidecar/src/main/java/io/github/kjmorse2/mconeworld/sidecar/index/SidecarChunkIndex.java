@@ -246,7 +246,8 @@ public final class SidecarChunkIndex implements ChunkIndex {
   /**
    * Explicit maintenance: deletes segments that neither the current catalog nor any open reader
    * references, logs of older generations, and the temporary catalog of an interrupted checkpoint.
-   * Every one of them is provably unused; nothing else is ever deleted.
+   * Every one of them is provably unused; nothing else is ever deleted. A failure here never
+   * touches committed state, so it leaves the handle usable: call it again.
    *
    * @return the deleted paths, relative to {@code chunk-index/}
    */

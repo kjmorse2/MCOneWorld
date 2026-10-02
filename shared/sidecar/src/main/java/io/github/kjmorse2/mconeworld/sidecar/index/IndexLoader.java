@@ -51,7 +51,13 @@ final class IndexLoader {
       try {
         if (files.exists(logPath)) {
           byte[] logBytes = read(files, logPath, options.maxLogBytes());
-          replay = DeltaLog.replay(logBytes, logPath.toString(), Integer.MAX_VALUE);
+          replay =
+              DeltaLog.replay(
+                  logBytes,
+                  logPath.toString(),
+                  Integer.MAX_VALUE,
+                  catalog.indexId,
+                  catalog.generation);
           IndexFormat.requireIndex(
               new IndexFormat.FileHeader(0, replay.indexId(), replay.generation()),
               catalog.indexId,

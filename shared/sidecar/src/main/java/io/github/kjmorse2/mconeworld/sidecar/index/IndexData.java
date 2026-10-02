@@ -5,6 +5,7 @@ import io.github.kjmorse2.mconeworld.domain.DimensionKey;
 import io.github.kjmorse2.mconeworld.domain.provenance.ChunkProvenance;
 import io.github.kjmorse2.mconeworld.sidecar.storage.IndexFiles;
 import io.github.kjmorse2.mconeworld.sidecar.storage.SidecarPath;
+import io.github.kjmorse2.mconeworld.sidecar.storage.StorageException;
 import io.github.kjmorse2.mconeworld.sidecar.storage.StorageFileSystem;
 import java.io.EOFException;
 import java.io.IOException;
@@ -197,6 +198,9 @@ final class IndexData implements AutoCloseable {
             "a referenced segment is missing",
             path.toString(),
             e);
+      } catch (StorageException e) {
+        throw new ChunkIndexException(
+            e.code(), "cannot open a segment: " + e.getMessage(), path.toString(), e);
       } catch (IOException e) {
         throw new ChunkIndexException(
             ChunkIndexIssueCodes.IO_FAILURE, "cannot open a segment", path.toString(), e);
