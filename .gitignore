@@ -12,3 +12,6 @@
 /.idea/
 *.iml
 /.vscode/
+
+# Local world copies for manual inspection and validation; never committed (root AGENTS.md §18)
+/TestSaves/

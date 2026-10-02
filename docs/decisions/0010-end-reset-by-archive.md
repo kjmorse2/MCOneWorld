@@ -16,7 +16,7 @@ Root §3 forbade *silently* resetting the central island or the dragon-fight dat
 
 When the Tool creates a new season, it **archives the whole End dimension directory**, so Minecraft generates a fresh End, with a fresh dragon fight, on the next start. This is part of the season-transition operation and follows the full safe protocol (root §10).
 
-**Where the dragon fight lives** (owner-provided, 2026-10-02; to be confirmed by the T2 and T9 validation):
+**Where the dragon fight lives** (owner-provided, 2026-10-02; **confirmed** for the vanilla 26.2 layout on two real worlds in [`world-format-26.2.md`](../compatibility/world-format-26.2.md) §3):
 
 - **Java 26.1 and newer:** in the End dimension's own saved data, `dimensions/minecraft/the_end/data/minecraft/ender_dragon_fight.dat`. Servers that keep each dimension in its own world folder (Paper) have a different prefix, but the file is still under that dimension's `data/minecraft/`.
 - **Before 26.1:** in `level.dat`, at `Data/DragonFight` or `Data/DimensionData/1/DragonFight`.
@@ -47,10 +47,10 @@ Archiving only some of these, for example the dragon-fight record without the ch
 5. **Commit:** the manifest records the archived dimension (format addition, manifest 1.1) in the same transaction that activates the new season (ADR 0011).
 6. **Rollback** restores the End dimension directory from the operation's own verified copy.
 
-**Verification before implementation (root §18).** Two facts must be confirmed against the pinned 26.2 vanilla and Paper servers, through a recorded manual inspection of a disposable world, before T9 relies on them:
+**Verification before implementation (root §18).**
 
-- the dragon-fight file location
-- the Paper dimension-folder layout
+- **Dragon-fight location:** confirmed for vanilla 26.2 (`world-format-26.2.md`).
+- **Paper dimension-folder layout:** still unverified. Neither sample world has been saved by Paper 26.x. Until a world saved by Paper 26.2 is inspected, the End archive runs only on the verified vanilla layout (`dimensions/minecraft/the_end/`), and any other layout is inspect-only.
 
 If a version keeps the fight in `level.dat` instead, that version stays inspect-only until a new revision of this ADR adds a lossless `level.dat` writer.
 

@@ -64,7 +64,11 @@ Pinned in `gradle/libs.versions.toml`.
 
 **Chunk-index spike dependencies (Prompt 08), removed in Prompt 09.** `org.xerial:sqlite-jdbc` 3.53.4.0, `org.roaringbitmap:RoaringBitmap` 1.6.23, and `com.h2database:h2-mvstore` 2.5.252 were on the `bench` classpath only, while ADR 0007 was undecided. The accepted encoding uses only the JDK, so they were removed (owner decision D4), along with their lockfile and verification-metadata entries. Paper's own server classpath carries `sqlite-jdbc` 3.49.1.0 (`paper-server/build.gradle.kts`, checked 2026-09-30); MCOneWorld does not use it.
 
-## 4. Evidence
+## 4. World format
+
+The observed 26.2 world layout, `level.dat` fields, dragon-fight location, and region-file facts are in [`world-format-26.2.md`](world-format-26.2.md) (Tool T2).
+
+## 5. Evidence
 
 Endpoints queried on 2026-09-27 (read-only):
 
