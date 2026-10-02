@@ -56,7 +56,7 @@ All implementation decisions must preserve these invariants:
 - Silently resetting the central End island or dragon-fight metadata.
 - Modifying existing chunks merely because a new world-generation policy was installed.
 
-The End strategy is decided by ADR 0010 (2026-10-02): a new season archives the whole End dimension into the sidecar's backup area and resets the dragon fight, through the Tool's journaled season transition, so a fresh End generates. This is never silent: it is previewed, backed up, verified, and reversible. Outside that operation, preserve all existing End chunks, builds, entities, gateways, and dragon-fight data.
+The End strategy is decided by ADR 0010 (2026-10-02): a new season archives the whole End dimension directory, which in 26.1+ includes the dragon-fight state, into the sidecar's backup area through the Tool's journaled season transition, so a fresh End generates. This is never silent: it is previewed, backed up, verified, and reversible. Outside that operation, preserve all existing End chunks, builds, entities, gateways, and dragon-fight data.
 
 ## 4. Monorepo architecture
 

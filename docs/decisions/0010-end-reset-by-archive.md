@@ -14,22 +14,45 @@ Root §3 forbade *silently* resetting the central island or the dragon-fight dat
 
 ## 2. Decision
 
-When the Tool creates a new season, it **archives the whole End dimension and resets the dragon fight**, so Minecraft generates a fresh End on the next start. This is part of the season-transition operation and follows the full safe protocol (root §10).
+When the Tool creates a new season, it **archives the whole End dimension directory**, so Minecraft generates a fresh End, with a fresh dragon fight, on the next start. This is part of the season-transition operation and follows the full safe protocol (root §10).
+
+**Where the dragon fight lives** (owner-provided, 2026-10-02; to be confirmed by the T2 and T9 validation):
+
+- **Java 26.1 and newer:** in the End dimension's own saved data, `dimensions/minecraft/the_end/data/minecraft/ender_dragon_fight.dat`. Servers that keep each dimension in its own world folder (Paper) have a different prefix, but the file is still under that dimension's `data/minecraft/`.
+- **Before 26.1:** in `level.dat`, at `Data/DragonFight` or `Data/DimensionData/1/DragonFight`.
+
+On the pinned 26.2, the fight state therefore sits inside the directory being archived. **No `level.dat` edit is needed**, and the Tool never writes NBT.
+
+**The arena's data is spread across several places,** and archiving the whole dimension directory handles each consistently:
+
+| Data | Where it lives | How it is handled |
+|---|---|---|
+| Central island, pillars, exit portal, gateways, End cities | End region files (blocks and structure data) | Archived |
+| The dragon and End crystals | End entity-region files | Archived |
+| Gateway progression, respawn stage, exit-portal location | The dragon-fight saved data | Archived |
+| Player End advancements | Each player's advancement file | **Not** in the End directory. The plugin's season progression reset handles them (ADR 0011); the Tool never edits player data. |
+
+Archiving only some of these, for example the dragon-fight record without the chunks or the reverse, would leave an inconsistent arena, so the archive always takes the whole dimension directory.
 
 1. **Preconditions:**
    - The world's data version is the pinned one (26.2, data version 4903); any other version is refused.
    - The server is stopped (`session.lock` is not held) and the sidecar writer lock is held.
    - A verified full backup exists.
-2. **Plan and preview:** the End's region, entities, and poi files with their sizes; the dragon-fight fields to reset; the season being created.
+2. **Plan and preview:** the files of the End dimension directory with their sizes (region, entities, poi, and `data/`, including the dragon fight), and the season being created.
 3. **Apply:**
    1. Copy the End dimension's files into the operation's backup area, `backups/<id>/` (format: ADR 0012), and verify every checksum.
    2. Only then delete the originals. Copying and verifying before deleting is safe even when the world and the sidecar are on different filesystems.
-   3. Reset the dragon-fight data in a lossless NBT round trip that keeps every unknown tag. Write a temp file in the same directory, fsync it, and rename it atomically.
+   3. **Paper's separate world folder** (for example `world_the_end/`) also holds folder-level files such as its own `level.dat`. Only the dimension's data directory is archived; the folder-level files stay. The exact Paper 26.2 layout is verified in T2 before any code depends on it.
 4. **Index:** the End's chunk-provenance records are written to a report under `reports/`, then removed from the index. The terrain they describe no longer exists in the world.
 5. **Commit:** the manifest records the archived dimension (format addition, manifest 1.1) in the same transaction that activates the new season (ADR 0011).
-6. **Rollback** restores the End files and the dragon-fight data from the operation's own copies.
+6. **Rollback** restores the End dimension directory from the operation's own verified copy.
 
-**The exact location of the dragon-fight data in 26.2** (a `level.dat` tag or a separate data file) must be verified against the pinned server before implementation, through its generated reports or a recorded manual inspection. It is never assumed (root §18). Every step above applies to whichever location is verified.
+**Verification before implementation (root §18).** Two facts must be confirmed against the pinned 26.2 vanilla and Paper servers, through a recorded manual inspection of a disposable world, before T9 relies on them:
+
+- the dragon-fight file location
+- the Paper dimension-folder layout
+
+If a version keeps the fight in `level.dat` instead, that version stays inspect-only until a new revision of this ADR adds a lossless `level.dat` writer.
 
 **Players.** Players whose saved position is in the End are moved and reset by the plugin when it applies the activation (ADR 0011). The Tool does not edit player data.
 
@@ -59,6 +82,5 @@ When the Tool creates a new season, it **archives the whole End dimension and re
   - wrong data version refused
   - held `session.lock` refused
   - checksum mismatch in the copy refused before any deletion
-  - NBT round trip preserving unknown tags
-  - a semantic NBT diff showing that only the reset fields changed
-- Manual validation, recorded, on a disposable copy of a real 26.2 world: after the transition, Paper 26.2 generates a fresh End with a new dragon fight.
+  - `level.dat` and every file outside the End dimension directory byte-identical before and after
+- Manual validation, recorded, on a disposable copy of a real 26.2 world: after the transition, Paper 26.2 generates a fresh End with a new dragon fight. This also confirms the dragon-fight file location and the Paper layout.

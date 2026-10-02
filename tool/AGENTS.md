@@ -19,7 +19,7 @@ It shows **absolute coordinates only**. Season-local coordinates belong to the p
 
 | Module | Contents | May depend on |
 |---|---|---|
-| `tool/world` | World-file access: `level.dat`, dimension layout, region headers, `session.lock`, the End archive and dragon-fight writers. Vendored MCA Selector code (ADR 0009). | `shared:domain`; the NBT library |
+| `tool/world` | World-file access: a bounded read-only NBT reader for `level.dat`, the dimension layout (vanilla and Paper), region headers, `session.lock`, and the End archive. Vendored MCA Selector code (ADR 0009). | `shared:domain` |
 | `tool/core` | Headless services: session, init, reconcile, backup, season planner and transition, map model, CLI | `tool/world`, `shared:domain`, `shared:sidecar` |
 | `tool/app` | JavaFX views and view-models | `tool/core` only |
 
@@ -29,11 +29,7 @@ It shows **absolute coordinates only**. Season-local coordinates belong to the p
 
 ## 3. Safety rules specific to the Tool
 
-1. **Read-only by default.** The only world files the Tool may write in v1:
-   - the End dimension's files (archived and then removed, ADR 0010)
-   - the dragon-fight data (reset, ADR 0010)
-
-   Every other world write is out of scope until a new ADR allows it.
+1. **Read-only by default.** The only world files the Tool may write in v1 are the End dimension directory's files: archived, then removed (ADR 0010). In 26.1+ that directory includes the dragon-fight state. The Tool never writes NBT, `level.dat`, player data, or any other dimension. Every other world write is out of scope until a new ADR allows it.
 2. **The pinned-version gate.** World writes run only when the world's data version equals the pinned one (26.2, data version 4903). Every other version is inspect-only, and the UI says why.
 3. **The server must be stopped.**
    - Any world write needs `session.lock` to be free, plus the sidecar writer lock (`SidecarWriter`).

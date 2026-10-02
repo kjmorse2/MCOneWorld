@@ -31,12 +31,12 @@ What they deliberately lack is everything that touches Minecraft world files: re
 | Topic | Decision |
 |---|---|
 | MCA Selector relationship (root §22) | **Vendor plus new app.** New tool modules in the root build, under its quality gates. Only the needed MCA Selector code is copied into an attributed module. `offline-tool/` stays untouched; it remains the user's trimming tool and the upstream reference. |
-| Minecraft versions | Read-only inspection for any version (region headers are version-agnostic). World mutation, which is only the End archive and the `level.dat` dragon-fight reset, runs only on the pinned **26.2 (data version 4903)** and fails closed otherwise. |
+| Minecraft versions | Read-only inspection for any version (region headers are version-agnostic). World mutation, which is only the End archive (the dragon fight is saved inside the End directory in 26.1+), runs only on the pinned **26.2 (data version 4903)** and fails closed otherwise. |
 | v1 scope | Sidecar setup with legacy import; reconcile after external trimming; backup creation and verification; seasons (plan, create, offline activation); End archive and regeneration; a map for planning. **Out of scope:** restore (except operation rollback), chunk deletion (lowest priority), strongholds, season-local coordinates (the tool shows absolute coordinates only). |
 | Activation | **The tool activates offline.** The sidecar records "activation pending application" so the plugin applies spawn and player resets at the next start. This needs a shared manifest format change. |
 | Removed chunks found by reconcile | Removed from the index, but every removed record is first written to a report under `reports/`. A removed protected chunk blocks until acknowledged. |
 | Backups | Live in the sidecar under `backups/<id>/` (accepted manifest format), with checksums, verified after writing. |
-| End strategy (root §22; amends §3's "preserve the End") | At each season creation, archive the whole End dimension (move its files into the backup area) and reset the dragon fight, so Minecraft generates a fresh End. Pinned version only, server stopped, full safe protocol. Root AGENTS.md §3 is updated to reference the ADR. |
+| End strategy (root §22; amends §3's "preserve the End") | At each season creation, archive the whole End dimension directory (move its files into the backup area). In 26.1+ that includes the dragon fight (`…/the_end/data/minecraft/ender_dragon_fight.dat`), so Minecraft generates a fresh End and fight. Pinned version only, server stopped, full safe protocol. Root AGENTS.md §3 is updated to reference the ADR. |
 | Java | Java 25 with JavaFX 25. The installer bundles its own runtime through jpackage. The shared jars (Java 21 bytecode) are used unchanged. |
 
 ## Architecture
@@ -45,7 +45,7 @@ New root-build modules (Kotlin DSL; locked and verified; Spotless, Error Prone, 
 
 ```text
 tool/
-  world/   :tool:world  read-only world access + the narrow End-archive and level.dat writers.
+  world/   :tool:world  read-only world access + the narrow End-archive writer.
                         Vendored MCA Selector pieces (MIT, Querz) with an upstream-commit note.
                         Depends on shared:domain. No JavaFX.
   core/    :tool:core   headless application services and a CLI. Depends on tool:world and
@@ -73,7 +73,7 @@ Dependency direction is `app → core → world → shared`, enforced by extendi
 
 Later and optional: `tile/*` and `version/*` terrain rendering.
 
-**NBT:** the root build allows only mavenCentral, so MCA Selector's JitPack Querz NBT commit is not usable. T1 picks an NBT library from Maven Central (candidate `net.querz:nbt`, MIT) or vendors the minimal reader and writer. The requirement is a lossless round trip of `level.dat`.
+**NBT:** read-only only. The Tool reads `level.dat` (data version, level name, seed) and never writes NBT, so T1/T2 add a small bounded NBT reader of our own, which limits decompression, depth, and sizes (root §20). There is no dependency, and MCA Selector's JitPack NBT isn't needed.
 
 ## Milestones
 
@@ -83,7 +83,7 @@ Each milestone is one or more commits. Its tests must pass in `./gradlew check`;
 
 - ADRs:
   - 0009: MCA Selector relationship (vendor plus new app)
-  - 0010: End reset (archive the whole End plus reset the dragon fight)
+  - 0010: End reset (archive the whole End dimension directory, dragon fight included)
   - 0011: offline activation with pending application
   - 0012: backup format
 - Root AGENTS.md §3 and §22 amended to point at ADR 0010 and resolve the two deferred items.
@@ -94,13 +94,13 @@ Each milestone is one or more commits. Its tests must pass in `./gradlew check`;
 
 - `:tool:world`, `:tool:core`, and `:tool:app` in `settings.gradle.kts`, with a `mconeworld.tool-module` convention plugin (release 25).
 - JavaFX 25 from Maven Central, with Linux, Windows, and macOS classifier artifacts all locked and verified.
-- NBT library choice; `toolCheck` aggregate task; CI job.
+- `toolCheck` aggregate task; CI job.
 - `app` shows an empty window. A headless smoke test (TestFX with Monocle, locked) proves startup.
 - **Done when:** `./gradlew toolCheck` passes and `git diff --stat offline-tool/` is empty.
 
 **T2: Read-only world access (`:tool:world`)**
 
-- `WorldLocator` validates a world directory. `LevelData` reads `level.dat`: data version, level name, seed. `DimensionLayout` handles both layouts and custom datapack dimensions.
+- `WorldLocator` validates a world directory. `LevelData` reads `level.dat` (data version, level name, seed) through a bounded read-only NBT reader. `DimensionLayout` handles the legacy and 26.1+ vanilla layouts, Paper's per-dimension world folders (verified against Paper 26.2), and custom datapack dimensions.
 - `RegionInventory` streams chunk presence and header timestamps per dimension for region, entities, and poi files.
 - `SessionLockProbe` detects a running server through the `session.lock` file lock. `WorldSupport` classifies a world as `INSPECT_ONLY` or `MUTABLE` (pinned version only).
 - Test support: a synthetic world builder that writes `.mca` headers and `level.dat` (no Mojang assets).
@@ -181,26 +181,25 @@ Each milestone is one or more commits. Its tests must pass in `./gradlew check`;
 - **Plan and preview** show:
   - the new season (name, origins, spawn)
   - the End files to archive (list and sizes)
-  - the dragon-fight fields to reset
+  - the End dimension directory to archive (in 26.1+ it includes the dragon fight)
   - the previous season being archived
 - **Apply**, in this order:
   1. Copy the End dimension's files into `backups/<id>/end/`, then verify. This is a copy-verify-delete, so it is safe across filesystems.
-  2. Delete the originals.
-  3. Reset the dragon fight in `level.dat`: a lossless NBT round trip that keeps unknown tags; write a temp file in the world directory, fsync, and rename atomically.
-  4. Remove the End's provenance from the index, with a report.
-  5. In one manifest transaction: `appendSeason`, `archiveActiveSeason`, `activate`, `pendingApplication = true`, and the archived-dimension record. This transaction is the commit point.
+  2. Delete the originals. On Paper's separate world folder, only the dimension's data directory goes; folder-level files such as its `level.dat` stay.
+  3. Remove the End's provenance from the index, with a report.
+  4. In one manifest transaction: `appendSeason`, `archiveActiveSeason`, `activate`, `pendingApplication = true`, and the archived-dimension record. This transaction is the commit point.
 - **Validate:**
   - the End is absent
-  - a semantic NBT diff of `level.dat` shows only the reset fields changed
+  - every file outside the End dimension directory, `level.dat` included, is byte-identical
   - the index verifies
   - `ArchiveState.validate()` passes
-- **Rollback** (from the journal) restores the End files and `level.dat` from the operation's own copies.
-- **The exact dragon-fight NBT location in 26.2 is verified from the pinned server**, through generated reports or a manual validation procedure, never guessed (root §18).
+- **Rollback** (from the journal) restores the End dimension directory from the operation's own verified copy.
+- **The dragon-fight location** (owner-provided: inside the End directory in 26.1+) **and Paper's dimension-folder layout are confirmed on the pinned servers** by a recorded manual check before this milestone relies on them (root §18).
 - **Tests:**
   - interruption at every step proves old-or-new-plus-rollback
   - wrong data version refused
   - running server refused
-  - an NBT round trip that preserves unknown tags
+  - files outside the End directory unchanged
 
 **T10: JavaFX shell and session UI (`:tool:app`)**
 
@@ -240,7 +239,7 @@ Each milestone is one or more commits. Its tests must pass in `./gradlew check`;
 **T14: Packaging and user guide**
 
 - jpackage artifacts `MCOneWorld-Tool-<version>.<dist>` for Linux, Windows, and macOS.
-- Bundled licences: MCOneWorld MIT, MCA Selector MIT for the vendored code, the NBT library, and JavaFX (GPL-2.0 with Classpath Exception).
+- Bundled licences: MCOneWorld MIT, MCA Selector MIT for the vendored code, and JavaFX (GPL-2.0 with Classpath Exception).
 - A user guide covering prerequisites, preview, backup, execution, validation, and rollback for every operation (root §23).
 - A recorded manual validation on a disposable copy of a real 26.2 world.
 
@@ -254,7 +253,7 @@ Each milestone is one or more commits. Its tests must pass in `./gradlew check`;
 - **Per milestone:** `./gradlew sharedCheck toolCheck` (format, Error Prone and NullAway, architecture guards, unit, property, and fault tests).
 - **End to end:**
   1. CLI on a synthetic world: `init` → `reconcile` (after deleting region files to simulate trimming) → `backup` → `season create`.
-  2. Assert the manifest, index, reports, backup verification, End archive, and `level.dat` semantic diff.
+  2. Assert the manifest, index, reports, backup verification, the End archive, and that every file outside the End directory is unchanged.
   3. Repeat with injected interruption at every journal step.
 - **GUI:** Monocle smoke tests, plus a manual checklist on a disposable copy of a real 26.2 world:
   1. open the world
@@ -269,6 +268,6 @@ Each milestone is one or more commits. Its tests must pass in `./gradlew check`;
 ## Risks and dependencies
 
 - **Plugin coordination.** Activation and the End reset change what the plugin must do at startup: apply the spawn and player resets when `pendingApplication` is set, and expect a fresh End. Both are recorded in ADRs 0010 and 0011 for the Paper project. The plugin itself is out of scope here.
-- **Where dragon-fight data lives in 26.2** must be verified before T9; if it isn't in `level.dat`, T9 adapts to the verified location.
-- **Locking JavaFX's per-platform artifacts** and the NBT library choice come first in T1, because the repository rules allow mavenCentral only.
+- **Dragon fight and Paper layout.** The owner reports that 26.1+ keeps the dragon fight inside the End dimension directory, and that Paper keeps each dimension in its own world folder. Both are confirmed in T2 (layout) and before T9 (fight), never guessed. A version that keeps the fight in `level.dat` stays inspect-only.
+- **JavaFX's per-platform artifacts** must be locked and verified for every OS in T1, because the repository rules allow mavenCentral only.
 - **Disk space.** A full-world backup per season can be large. T7 checks free space and shows the expected size in the preview.
