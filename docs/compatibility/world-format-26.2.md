@@ -57,3 +57,11 @@ Archiving the whole End dimension directory therefore takes the fight state alon
 - **Zero-byte region files are normal.** Minecraft leaves them behind. They mean "no chunks", not corruption.
 - **Header layout** (unchanged since Anvil): 1,024 big-endian entries of a 3-byte sector offset and a 1-byte sector count, then 1,024 big-endian timestamps (epoch seconds). Chunk data starts at sector 2.
 - **Header-only reading.** Region-chunk presence and its last-save timestamp come from the header alone, without decompressing any chunk. This is what the Tool's inventory uses.
+
+## 5. Validation of the Tool's reader (T2)
+
+`./gradlew :tool:world:localWorldTest -PlocalWorlds=TestSaves` runs `tool/world`'s inspector and region inventory over both worlds, read-only, and checks that no file was modified.
+
+- **Counts.** Every count matches the independent scan above: region, entity, and POI chunks per dimension, and the zero-byte files (8 and 171).
+- **Findings.** Both worlds read as data version 4903, the `MODERN` layout, `session.lock` free, and writable, with no findings. The dragon-fight file is present in the End's `data/`.
+- **Rerun** this check whenever the Tool's reader changes, or on any new world before the Tool writes to it.
