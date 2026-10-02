@@ -52,9 +52,23 @@ public final class SidecarRoot {
    */
   public static final String OPERATIONS = "operations";
 
+  /**
+   * Directory holding the chunk index (ADR 0007, {@code docs/formats/chunk-index-v1.md}): a second
+   * mutable area with its own commit point, written only through {@link IndexFileWriter}. Manifests
+   * never reference or stage anything in it.
+   */
+  public static final String CHUNK_INDEX = "chunk-index";
+
   private static final Set<String> RESERVED_TOP_LEVEL =
       Set.of(
-          MANIFEST, PREVIOUS_MANIFEST, LOCK, LOCK_OWNER, LOCK_OWNER + ".tmp", STAGING, OPERATIONS);
+          MANIFEST,
+          PREVIOUS_MANIFEST,
+          LOCK,
+          LOCK_OWNER,
+          LOCK_OWNER + ".tmp",
+          STAGING,
+          OPERATIONS,
+          CHUNK_INDEX);
 
   private final Path real;
 

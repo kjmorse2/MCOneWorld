@@ -91,6 +91,11 @@ public final class SidecarStore {
         readBytes(root.internal(SidecarRoot.PREVIOUS_MANIFEST), limits.maxDocumentBytes()));
   }
 
+  /** Read-only access to the {@code chunk-index/} area (ADR 0007). */
+  public IndexFiles indexFiles() {
+    return new IndexFiles(this);
+  }
+
   /** Read-only access to the {@code operations/} area (plans and journals). */
   public OperationFiles operationFiles() {
     return new OperationFiles(this);

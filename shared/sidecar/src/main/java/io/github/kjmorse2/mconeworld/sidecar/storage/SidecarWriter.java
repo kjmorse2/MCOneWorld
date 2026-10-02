@@ -21,6 +21,7 @@ public final class SidecarWriter implements AutoCloseable {
   private final SidecarStore store;
   private final SidecarLock lock;
   private @Nullable SidecarTransaction open;
+  private @Nullable IndexFileWriter indexClaim;
 
   SidecarWriter(SidecarStore store, SidecarLock lock) {
     this.store = store;
@@ -187,6 +188,30 @@ public final class SidecarWriter implements AutoCloseable {
    */
   public OperationFileWriter operationFiles() {
     return new OperationFileWriter(this);
+  }
+
+  /**
+   * Claims durable write access to the {@code chunk-index/} area. At most one claim is open per
+   * writer, so two index handles can never interleave writes; close the returned writer to release
+   * it.
+   *
+   * @throws IllegalStateException if another claim is open
+   * @throws StorageException {@code LOCK_LOST}
+   */
+  public IndexFileWriter openIndexWriter() throws StorageException {
+    lock.verifyHeld();
+    if (indexClaim != null) {
+      throw new IllegalStateException("The chunk-index area is already open for writing");
+    }
+    IndexFileWriter claim = new IndexFileWriter(this);
+    indexClaim = claim;
+    return claim;
+  }
+
+  void releaseIndexClaim(IndexFileWriter claim) {
+    if (indexClaim == claim) {
+      indexClaim = null;
+    }
   }
 
   /**

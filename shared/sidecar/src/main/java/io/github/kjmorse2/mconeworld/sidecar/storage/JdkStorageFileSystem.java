@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 package io.github.kjmorse2.mconeworld.sidecar.storage;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -85,6 +86,11 @@ public final class JdkStorageFileSystem implements StorageFileSystem {
       }
 
       @Override
+      public void syncData() throws IOException {
+        channel.force(false);
+      }
+
+      @Override
       public void close() throws IOException {
         channel.close();
       }
@@ -95,6 +101,37 @@ public final class JdkStorageFileSystem implements StorageFileSystem {
   public InputStream openRead(Path file) throws IOException {
     return Channels.newInputStream(
         FileChannel.open(file, StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS));
+  }
+
+  @Override
+  public ReadableFile openRandomAccess(Path file) throws IOException {
+    FileChannel channel =
+        FileChannel.open(file, StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS);
+    return new ReadableFile() {
+      @Override
+      public long size() throws IOException {
+        return channel.size();
+      }
+
+      @Override
+      public void readFully(long position, byte[] target, int offset, int length)
+          throws IOException {
+        ByteBuffer buffer = ByteBuffer.wrap(target, offset, length);
+        long at = position;
+        while (buffer.hasRemaining()) {
+          int n = channel.read(buffer, at);
+          if (n < 0) {
+            throw new EOFException("File ends before offset " + (position + length));
+          }
+          at += n;
+        }
+      }
+
+      @Override
+      public void close() throws IOException {
+        channel.close();
+      }
+    };
   }
 
   @Override

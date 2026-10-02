@@ -176,6 +176,11 @@ final class FaultyFileSystem implements StorageFileSystem {
   }
 
   @Override
+  public ReadableFile openRandomAccess(Path file) throws IOException {
+    return real.openRandomAccess(file);
+  }
+
+  @Override
   public void moveAtomically(Path source, Path target) throws IOException {
     if (atomicMoveUnsupported) {
       throw new AtomicMoveNotSupportedException(source.toString(), target.toString(), "simulated");

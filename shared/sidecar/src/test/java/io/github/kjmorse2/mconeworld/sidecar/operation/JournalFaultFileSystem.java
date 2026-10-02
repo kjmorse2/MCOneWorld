@@ -110,6 +110,11 @@ final class JournalFaultFileSystem implements StorageFileSystem {
   }
 
   @Override
+  public ReadableFile openRandomAccess(Path file) throws IOException {
+    return real.openRandomAccess(file);
+  }
+
+  @Override
   public void moveAtomically(Path source, Path target) throws IOException {
     mutations.incrementAndGet();
     real.moveAtomically(source, target);

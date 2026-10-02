@@ -49,6 +49,12 @@ public interface StorageFileSystem {
   InputStream openRead(Path file) throws IOException;
 
   /**
+   * Opens an existing regular file for positioned reads. Used by the chunk index, which reads
+   * single blocks out of large segment files.
+   */
+  ReadableFile openRandomAccess(Path file) throws IOException;
+
+  /**
    * Renames {@code source} to {@code target} atomically, replacing an existing target file.
    *
    * @throws java.nio.file.AtomicMoveNotSupportedException if the filesystem cannot rename
@@ -79,5 +85,29 @@ public interface StorageFileSystem {
 
     /** Forces written content and metadata to stable storage ({@code fsync}). */
     void sync() throws IOException;
+
+    /**
+     * Forces written content, and the metadata needed to read it back such as the file length, to
+     * stable storage ({@code fdatasync}). Cheaper than {@link #sync()}; used for append-only logs.
+     */
+    default void syncData() throws IOException {
+      sync();
+    }
+  }
+
+  /**
+   * A file opened by {@link #openRandomAccess(Path)}. Positioned reads are safe from several
+   * threads at once.
+   */
+  interface ReadableFile extends Closeable {
+    /** The file's current size in bytes. */
+    long size() throws IOException;
+
+    /**
+     * Reads exactly {@code length} bytes starting at {@code position} into {@code target}.
+     *
+     * @throws java.io.EOFException if the file ends first
+     */
+    void readFully(long position, byte[] target, int offset, int length) throws IOException;
   }
 }
