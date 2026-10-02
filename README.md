@@ -8,7 +8,7 @@ MIT-licensed. See [`LICENSE`](LICENSE) and [`NOTICE.md`](NOTICE.md), which cover
 
 | Path | What it is | Status |
 |---|---|---|
-| [`shared/`](shared/README.md) | Platform-neutral Java libraries: `domain`, `sidecar`, `protocol`, `test-fixtures` | In progress (prompt sequence in `shared/prompts/`) |
+| [`shared/`](shared/README.md) | Platform-neutral Java libraries: `domain`, `sidecar`, `protocol`, `test-fixtures` | Release candidate `shared 0.1.0-rc.1`: prompts 00–11 complete. See the [release audit](docs/architecture/shared-release-audit.md). |
 | `offline-tool/` | MCA Selector 2.9, imported with `git subtree` from `Querz/mcaselector`. It will become MCOneWorld Tool. | Separate Gradle build. Untouched upstream code. |
 | `paper-plugin/`, `fabric-client/` | MCOneWorld Paper and MCOneWorld Client | Not started |
 | `build-logic/` | Gradle convention plugins (`mconeworld.java-conventions`, `mconeworld.shared-module`) and architecture guards | |

@@ -282,6 +282,27 @@ The format is [`docs/formats/protocol-v1.md`](../docs/formats/protocol-v1.md); t
 - **Reaction to bad input:** log the code and ignore the message. Never disconnect.
 - **Test support:** `fixtures.protocol.ProtocolFixtures`, the seven golden vectors.
 
+## Release status (Prompt 11)
+
+The shared project is a release candidate, **`shared 0.1.0-rc.1`**, and is ready for platform work. The report is [`docs/architecture/shared-release-audit.md`](../docs/architecture/shared-release-audit.md). It covers:
+
+- the validation performed
+- the defects fixed
+- the deferred risks
+- the assumptions the Tool, Paper, and Fabric projects must uphold
+
+The format and protocol versions are machine-readable in [`docs/compatibility/shared-contracts.json`](../docs/compatibility/shared-contracts.json), which `SharedContractsTest` keeps equal to the code.
+
+Useful commands:
+
+```sh
+./gradlew sharedCheck assemble sharedTestSummary   # build/reports/shared-test-summary.json
+scripts/check-consumer-examples.sh                 # shared jars only, no platform dependencies
+scripts/dependency-report.py --osv                 # licenses and OSV advisories of every locked artifact
+```
+
+Test support added in the audit: `fixtures.Mutations`, a deterministic mutator for decoder fuzzing.
+
 ## Building
 
 ```bash
@@ -307,3 +328,7 @@ Requirements:
 - Production code in `sidecar` or `protocol` may never reference the other, or `test-fixtures`.
 - `-Xlint:all -Werror` and Error Prone are on. Fix warnings; do not suppress them globally.
 - Tests run with `user.timezone=UTC` and an `en_US` locale. Never read the wall clock or the default random source in code under test. Inject a `Clock` or a seeded random instead.
+- Don't run `--rerun-tasks` across the whole build: it recompiles the included `build-logic` while its plugins are loaded. Use `clean`, a fresh clone, or `--rerun` on one test task.
+- Run benchmarks on a real disk, never on tmpfs (`/tmp` on many Linux systems). A free `fsync` invalidates the commit and cold-open budgets.
+- A new golden file needs a `<file>.meta` (format, version, SHA-256), and `GoldenInventoryTest`'s count must be updated with it.
+- Changing a format or protocol version means updating `docs/compatibility/shared-contracts.json` as well; `SharedContractsTest` fails until you do.
