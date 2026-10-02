@@ -5,6 +5,7 @@ import io.github.kjmorse2.mconeworld.domain.validation.ValidationIssue;
 import io.github.kjmorse2.mconeworld.domain.validation.ValidationResult;
 import io.github.kjmorse2.mconeworld.sidecar.index.ChunkIndexBatch;
 import io.github.kjmorse2.mconeworld.sidecar.index.ChunkIndexException;
+import io.github.kjmorse2.mconeworld.sidecar.index.ChunkIndexIssueCodes;
 import io.github.kjmorse2.mconeworld.sidecar.index.ChunkIndexOptions;
 import io.github.kjmorse2.mconeworld.sidecar.index.ChunkIndexReader;
 import io.github.kjmorse2.mconeworld.sidecar.index.ChunkIndexStore;
@@ -46,8 +47,15 @@ final class ProductionIndex implements BenchIndex {
               StaleLockPolicy.TAKE_OVER_PROVABLY_STALE);
       try {
         ChunkIndexStore indexes = ChunkIndexStore.of(store, options);
-        SidecarChunkIndex index =
-            indexes.inspect().state() == null ? indexes.create(writer) : indexes.openWriter(writer);
+        SidecarChunkIndex index;
+        try {
+          index = indexes.openWriter(writer); // the application's path: one load of the index
+        } catch (ChunkIndexException e) {
+          if (!e.code().equals(ChunkIndexIssueCodes.INDEX_MISSING)) {
+            throw e;
+          }
+          index = indexes.create(writer);
+        }
         return new ProductionIndex(writer, index);
       } catch (ChunkIndexException | RuntimeException e) {
         writer.close();
@@ -58,10 +66,7 @@ final class ProductionIndex implements BenchIndex {
     } catch (StorageException e) {
       throw new ChunkIndexException(e.code(), String.valueOf(e.getMessage()), e);
     } catch (IOException e) {
-      throw new ChunkIndexException(
-          io.github.kjmorse2.mconeworld.sidecar.index.ChunkIndexIssueCodes.IO_FAILURE,
-          "cannot open " + directory,
-          e);
+      throw new ChunkIndexException(ChunkIndexIssueCodes.IO_FAILURE, "cannot open " + directory, e);
     }
   }
 
