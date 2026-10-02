@@ -2,7 +2,7 @@
 
 - Milestone: **Prompt 00: Discovery and decisions**
 - Date: 2026-09-27
-- Status: planning only. No production code, build files, or persistent formats were created.
+- Status: historical. This is the Prompt 00 plan, kept as written; nothing in it was changed when the plan was carried out. For the current state of the shared project, see [`shared-release-audit.md`](shared-release-audit.md).
 
 Related documents:
 

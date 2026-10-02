@@ -115,6 +115,44 @@ class OperationJournalStoreTest {
       assertThat(journals(store(root)).list()).containsExactly(PLAN.id());
     }
 
+    /**
+     * Prompt 11 audit: an append on an interrupted thread fails like any I/O failure. The journal
+     * keeps the entries before it (and at most the interrupted one, never a torn middle), and a
+     * reopened handle continues it.
+     */
+    @Test
+    void anInterruptedAppendFailsCleanlyAndTheJournalContinues() throws Exception {
+      recordFirst(2);
+      SidecarStore store = store(root);
+      try (SidecarWriter writer = writer(store)) {
+        OperationJournal journal = journals(store).open(writer, PLAN.id());
+        long next = journal.progress().nextSequence();
+        Thread.currentThread().interrupt();
+        try {
+          assertThatThrownBy(() -> journal.append(next, EVENTS.get(2)))
+              .isInstanceOf(IOException.class);
+        } finally {
+          Thread.interrupted();
+        }
+      }
+      OperationStatus status = inspect();
+      assertThat(status.integrity()).isIn(JournalIntegrity.INTACT, JournalIntegrity.TORN_TAIL);
+      assertThat(journalLines().size()).isBetween(2, 3);
+      if (status.integrity() == JournalIntegrity.TORN_TAIL) {
+        try (SidecarWriter writer = writer(store(root))) {
+          journals(store(root)).discardTornTail(writer, PLAN.id());
+        }
+      }
+      try (SidecarWriter writer = writer(store(root))) {
+        OperationJournal reopened = journals(store(root)).open(writer, PLAN.id());
+        // Entry 0 is the plan record written by create, so event i has sequence i + 1.
+        int done = (int) reopened.progress().nextSequence() - 1;
+        assertThat(done).isBetween(2, 3);
+        appendAll(reopened, EVENTS.subList(done, Math.min(done + 2, EVENTS.size())));
+      }
+      assertThat(inspect().integrity()).isEqualTo(JournalIntegrity.INTACT);
+    }
+
     @Test
     void createIsIdempotentForTheSamePlanAndRefusesAnother() throws Exception {
       recordFirst(2);

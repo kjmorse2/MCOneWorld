@@ -175,5 +175,6 @@ Every code after the first has the `sidecar.storage.` prefix.
 - **Tested:** Linux, ext4, local disk, JDK 25.
 - **Expected but untested:** macOS (APFS) and other POSIX local filesystems.
 - **Windows:** directory fsync is unavailable (reported through `directorySyncSupported=false`). File-lock semantics differ, and nothing is tested there. No support is claimed.
+- **Elsewhere,** failing to open a directory for its sync (for example `EACCES` or `EIO`) is an I/O failure, and the write fails closed. It is never downgraded to "unsupported" (Prompt 11 audit).
 - **Network filesystems (NFS, SMB, and similar):** unsupported. OS locks and rename atomicity are not reliable there.
 - **Durability** is only as good as the storage stack's honouring of `fsync`. Disks or virtualisation layers that ignore flushes can lose recent commits, but never tear a manifest.

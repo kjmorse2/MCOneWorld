@@ -119,3 +119,7 @@ See `shared/sidecar/src/test/java/.../storage/`:
   - holder-side inspection
   - **cross-process** exclusion, and a killed process leaving a provably stale lock
 - The whole sidecar suite was run 10 times in a row from scratch with no failures (Prompt 05 report).
+
+## Amendment (Prompt 11 audit, 2026-10-01)
+
+"Where the platform does not allow it" now means Windows, decided by the platform rather than by the error. Before the audit, `JdkStorageFileSystem` treated *any* failure to open a directory as "unsupported". On Linux that included permission or I/O errors, and the chunk-index and journal writers then skipped directory syncs silently. Now such errors propagate and the write fails closed. `StorageBehaviourTest.aDirectoryThatCannotBeOpenedFailsTheSyncOutsideWindows` covers this.

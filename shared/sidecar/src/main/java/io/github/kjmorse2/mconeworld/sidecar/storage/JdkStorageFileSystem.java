@@ -153,17 +153,19 @@ public final class JdkStorageFileSystem implements StorageFileSystem {
 
   @Override
   public void syncDirectory(Path dir) throws IOException {
-    FileChannel channel;
-    try {
-      channel = FileChannel.open(dir, StandardOpenOption.READ);
-    } catch (IOException e) {
-      // Some platforms (notably Windows) cannot open a directory as a channel.
-      throw new UnsupportedOperationException("Directory sync is not supported here", e);
+    // Windows cannot open a directory as a channel, so directory sync is unsupported there (ADR
+    // 0004). Everywhere else an error opening the directory is a real failure and propagates:
+    // treating it as "unsupported" would silently drop durability (Prompt 11 audit).
+    if (!DIRECTORY_SYNC_SUPPORTED) {
+      throw new UnsupportedOperationException("Directory sync is not supported on this platform");
     }
-    try (channel) {
+    try (FileChannel channel = FileChannel.open(dir, StandardOpenOption.READ)) {
       channel.force(true);
     }
   }
+
+  private static final boolean DIRECTORY_SYNC_SUPPORTED =
+      !System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).startsWith("windows");
 
   @Override
   public Path toRealPath(Path path) throws IOException {

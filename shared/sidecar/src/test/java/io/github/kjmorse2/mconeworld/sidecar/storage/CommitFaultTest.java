@@ -3,6 +3,7 @@ package io.github.kjmorse2.mconeworld.sidecar.storage;
 
 import static io.github.kjmorse2.mconeworld.sidecar.storage.StorageTestSupport.CLOCK;
 import static io.github.kjmorse2.mconeworld.sidecar.storage.StorageTestSupport.CONTENT_V1;
+import static io.github.kjmorse2.mconeworld.sidecar.storage.StorageTestSupport.CONTENT_V2;
 import static io.github.kjmorse2.mconeworld.sidecar.storage.StorageTestSupport.INDEX_V1;
 import static io.github.kjmorse2.mconeworld.sidecar.storage.StorageTestSupport.INDEX_V2;
 import static io.github.kjmorse2.mconeworld.sidecar.storage.StorageTestSupport.OWNER;
@@ -64,6 +65,47 @@ class CommitFaultTest {
       assertThat(fresh.inspect().findings()).as("rollback leaves nothing behind").isEmpty();
     }
     assertThat(Files.readAllBytes(root.resolve(INDEX_V1.value()))).isEqualTo(CONTENT_V1);
+    recoverTwiceAndAssertClean(fresh);
+  }
+
+  /**
+   * Prompt 11 audit: a thread interrupt at any stage (a server interrupting a worker) makes the
+   * next channel operation fail with ClosedByInterruptException. The outcome must be that of an I/O
+   * failure: the old or the new revision, never a torn or unrecoverable sidecar.
+   */
+  @ParameterizedTest
+  @EnumSource(CommitStage.class)
+  void anInterruptAtAnyStageLeavesTheOldOrTheNewRevision(CommitStage stage) throws Exception {
+    ManifestDocument base = commitInitial(root);
+    FaultyFileSystem fs = new FaultyFileSystem();
+    fs.onStage =
+        (seen, subject) -> {
+          if (seen == stage) {
+            Thread.currentThread().interrupt();
+          }
+        };
+    SidecarStore store = store(root, fs);
+    try (SidecarWriter writer = writer(store)) {
+      try {
+        commitNext(writer, base);
+      } catch (StorageException e) {
+        // the interrupt surfaced as a failure; the revision check below decides what it did
+      } finally {
+        Thread.interrupted();
+      }
+    }
+    SidecarStore fresh = store(root, JdkStorageFileSystem.INSTANCE);
+    try (SidecarWriter recovering = writer(fresh)) {
+      recovering.recover();
+    }
+    long revision = fresh.readManifest().document().revision();
+    assertThat(revision).as("revision after an interrupt at %s", stage).isIn(0L, 1L);
+    assertThat(fresh.inspect().findings()).as("clean after recovery").isEmpty();
+    if (revision == 0) {
+      assertThat(Files.readAllBytes(root.resolve(INDEX_V1.value()))).isEqualTo(CONTENT_V1);
+    } else {
+      assertThat(Files.readAllBytes(root.resolve(INDEX_V2.value()))).isEqualTo(CONTENT_V2);
+    }
     recoverTwiceAndAssertClean(fresh);
   }
 

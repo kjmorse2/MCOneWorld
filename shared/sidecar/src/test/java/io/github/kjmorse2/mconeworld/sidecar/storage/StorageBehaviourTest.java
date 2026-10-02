@@ -326,6 +326,28 @@ class StorageBehaviourTest {
     }
   }
 
+  /**
+   * Regression (Prompt 11 audit): on a platform that can sync directories, failing to open one is
+   * an error, not "unsupported". It used to be reported as unsupported, and the index and journal
+   * writers then skipped the sync silently.
+   */
+  @Test
+  void aDirectoryThatCannotBeOpenedFailsTheSyncOutsideWindows() throws Exception {
+    assumeTrue(FileSystems.getDefault().supportedFileAttributeViews().contains("posix"));
+    assumeTrue(
+        !System.getProperty("os.name").toLowerCase(java.util.Locale.ROOT).startsWith("windows"));
+    Path dir = Files.createDirectory(root.resolve("unreadable"));
+    Files.setPosixFilePermissions(dir, PosixFilePermissions.fromString("-wx------"));
+    try {
+      assumeTrue(!Files.isReadable(dir), "running with privileges that ignore permissions");
+      assertThatThrownBy(() -> JdkStorageFileSystem.INSTANCE.syncDirectory(dir))
+          .isInstanceOf(IOException.class);
+    } finally {
+      Files.setPosixFilePermissions(dir, PosixFilePermissions.fromString("rwx------"));
+    }
+    JdkStorageFileSystem.INSTANCE.syncDirectory(dir);
+  }
+
   @Test
   void symlinkInsideTheSidecarIsRefused(@TempDir Path outside) throws Exception {
     ManifestDocument base = commitInitial(root);

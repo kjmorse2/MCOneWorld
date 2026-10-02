@@ -7,6 +7,7 @@ The evidence behind [ADR 0007](../../decisions/0007-chunk-index-encoding.md).
 | [`budgets.md`](budgets.md) | Gate and target budgets, and the datasets. Committed **before** any measurement (`ab5a0fa0`). |
 | [`results.md`](results.md) | Prompt 08: the candidate comparison (budget verdicts, per-dataset tables, observations) |
 | [`results-prompt09.md`](results-prompt09.md) | Prompt 09: the production index against the Prompt 08 baseline, including the choice of compression unit |
+| [`results-prompt11.md`](results-prompt11.md) | Prompt 11: release-audit rerun of the default configuration; no regression |
 | `raw/<run>.jsonl` | Raw results, one JSON object per line. Each file is under 200 KB, so they are committed. Generated index files never are. |
 
 The harness is in `shared/sidecar/src/bench/` (see its [README](../../../shared/sidecar/src/bench/README.md)). Since Prompt 09 it measures only the production index; the Prompt 08 spike candidates were removed (ADR 0007, D4), and their raw results stay here. The datasets are `ChunkDatasets` in `shared:test-fixtures`.

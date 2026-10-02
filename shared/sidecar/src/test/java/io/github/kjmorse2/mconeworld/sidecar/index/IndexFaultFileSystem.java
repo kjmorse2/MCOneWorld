@@ -26,6 +26,13 @@ final class IndexFaultFileSystem implements StorageFileSystem {
   /** The step that fails (1-based), or 0 for none. */
   int failAtStep;
 
+  /**
+   * The step (1-based) at which the calling thread is interrupted just before the real operation
+   * runs, or 0 for none. An interruptible channel operation then fails with {@code
+   * ClosedByInterruptException}, as it would when a server interrupts a worker thread.
+   */
+  int interruptAtStep;
+
   /** If the failing step is a write, how many of its bytes reach the file first (-1: none). */
   int tearBytes = -1;
 
@@ -38,6 +45,9 @@ final class IndexFaultFileSystem implements StorageFileSystem {
   private void step(String what) throws IOException {
     steps++;
     stepLog.add(steps + " " + what);
+    if (steps == interruptAtStep) {
+      Thread.currentThread().interrupt();
+    }
     if (steps == failAtStep) {
       throw new IOException("injected failure at step " + steps + " (" + what + ")");
     }
@@ -90,6 +100,9 @@ final class IndexFaultFileSystem implements StorageFileSystem {
       public void write(byte[] bytes, int offset, int length) throws IOException {
         steps++;
         stepLog.add(steps + " write " + file.getFileName() + " " + length);
+        if (steps == interruptAtStep) {
+          Thread.currentThread().interrupt();
+        }
         if (steps == failAtStep) {
           if (tearBytes > 0) {
             delegate.write(bytes, offset, Math.min(tearBytes, length));

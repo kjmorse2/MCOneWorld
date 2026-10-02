@@ -24,6 +24,10 @@ jobs:
       # Runs tests, spotless, Error Prone/NullAway, architecture guards, build-logic tests.
       # Dependency verification (gradle/verification-metadata.xml) and strict locking apply.
       - run: ./gradlew --no-daemon sharedCheck assemble
+      - name: Test and artifact summary
+        run: ./gradlew --no-daemon sharedTestSummary
+      - name: Consumer examples (offline tool, Paper and Fabric adapters, no platform dependencies)
+        run: scripts/check-consumer-examples.sh
       - name: Reproducibility (second clean build must produce identical jars)
         run: |
           sha256sum shared/*/build/libs/*.jar > /tmp/first.sha
