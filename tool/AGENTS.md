@@ -4,7 +4,7 @@ This file inherits the repository-root [`AGENTS.md`](../AGENTS.md) completely. I
 
 ## 1. What the Tool is
 
-MCOneWorld Tool is the offline desktop application, a JavaFX 25 app on Java 25. With the server stopped, it:
+MCOneWorld Tool is the offline desktop application, a JavaFX 25 app on Java 25. It works on a world folder it is given: normally a copy downloaded from the server, which is uploaded back, with its sidecar, afterwards. It:
 
 - opens a Minecraft world and its sidecar (`mconeworld-data/`)
 - initializes a sidecar, importing existing chunks as legacy provenance
@@ -14,6 +14,8 @@ MCOneWorld Tool is the offline desktop application, a JavaFX 25 app on Java 25. 
 - shows a planning map and validation reports
 
 It shows **absolute coordinates only**. Season-local coordinates belong to the plugin and the client.
+
+It is **completely offline**: it never talks to a server or the network. It operates on Minecraft world files; the Paper plugin is kept in mind (it applies a pending activation, and Paper's per-world files are respected), but nothing the Tool does requires Paper.
 
 ## 2. Modules and dependency direction
 
@@ -31,9 +33,9 @@ It shows **absolute coordinates only**. Season-local coordinates belong to the p
 
 1. **Read-only by default.** The only world files the Tool may write in v1 are the End dimension directory's files: archived, then removed (ADR 0010). In 26.1+ that directory includes the dragon-fight state. The Tool never writes NBT, `level.dat`, player data, or any other dimension. Every other world write is out of scope until a new ADR allows it.
 2. **The pinned-version gate.** World writes run only when the world's data version equals the pinned one (26.2, data version 4903). Every other version is inspect-only, and the UI says why.
-3. **The server must be stopped.**
-   - Any world write needs `session.lock` to be free, plus the sidecar writer lock (`SidecarWriter`).
-   - Reads while the server runs are allowed, and are labelled "may be stale".
+3. **The world must not be open in Minecraft.**
+   - Any world write needs `session.lock` to be free, plus the sidecar writer lock (`SidecarWriter`). This is a cheap local guard: a game or server that still had the folder open would overwrite the Tool's changes.
+   - Reads of an open world are allowed, and are labelled "may be stale".
 4. **The full protocol.** Every sidecar or world mutation follows root §10 through a shared `OperationPlan` and an `OperationJournal`:
    - an `mconeworld:` operation type
    - a preview the user confirms
@@ -50,5 +52,6 @@ It shows **absolute coordinates only**. Season-local coordinates belong to the p
 - **Synthetic worlds only** in automated tests: build region headers and `level.dat` in code, with no Mojang assets. Copy fixtures to a temp directory before mutating them.
 - **Fault and interruption coverage.** Every journaled operation is tested with a failure and with an interrupt at every step. Reuse the patterns of `shared`'s `ChunkIndexFaultTest`, `CommitFaultTest`, and `ChunkIndexInterruptTest`.
 - **View-models** are plain Java and unit-tested. UI smoke tests run headless (Monocle).
-- **Real worlds.** Behaviour on a real 26.2 world, such as where the dragon-fight data lives and End regeneration, is verified by a recorded manual procedure on a disposable copy. It is never guessed (root §18).
+- **Real worlds.** Behaviour on a real 26.2 world, such as where the dragon-fight data lives and how Minecraft treats a missing End, is established from real save files (read-only, or on temporary copies through `localWorldTest`) and from Mojang's and Paper's documentation. It is never guessed (root §18).
+- **No server or network tests.** The Tool is offline: no test starts Minecraft or Paper, or uses the network.
 - **No change to `offline-tool/`.** `git diff --stat offline-tool/` must stay empty.

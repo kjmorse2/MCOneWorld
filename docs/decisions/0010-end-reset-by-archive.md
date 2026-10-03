@@ -18,7 +18,7 @@ When the Tool creates a new season, it **archives the whole End dimension direct
 
 **Where the dragon fight lives** (owner-provided, 2026-10-02; **confirmed** for the vanilla 26.2 layout on two real worlds in [`world-format-26.2.md`](../compatibility/world-format-26.2.md) §3):
 
-- **Java 26.1 and newer:** in the End dimension's own saved data, `dimensions/minecraft/the_end/data/minecraft/ender_dragon_fight.dat`. Servers that keep each dimension in its own world folder (Paper) have a different prefix, but the file is still under that dimension's `data/minecraft/`.
+- **Java 26.1 and newer:** in the End dimension's own saved data, `dimensions/minecraft/the_end/data/minecraft/ender_dragon_fight.dat`. Paper 26.1+ uses the same layout ([Paper 26.1 announcement](https://papermc.io/news/26-1/)).
 - **Before 26.1:** in `level.dat`, at `Data/DragonFight` or `Data/DimensionData/1/DragonFight`.
 
 On the pinned 26.2, the fight state therefore sits inside the directory being archived. **No `level.dat` edit is needed**, and the Tool never writes NBT.
@@ -36,13 +36,17 @@ Archiving only some of these, for example the dragon-fight record without the ch
 
 1. **Preconditions:**
    - The world's data version is the pinned one (26.2, data version 4903); any other version is refused.
-   - The server is stopped (`session.lock` is not held) and the sidecar writer lock is held.
+   - The world is not open in Minecraft (`session.lock` is not held) and the sidecar writer lock is held.
    - A verified full backup exists.
 2. **Plan and preview:** the files of the End dimension directory with their sizes (region, entities, poi, and `data/`, including the dragon fight), and the season being created.
 3. **Apply:**
    1. Copy the End dimension's files into the operation's backup area, `backups/<id>/` (format: ADR 0012), and verify every checksum.
    2. Only then delete the originals. Copying and verifying before deleting is safe even when the world and the sidecar are on different filesystems.
-   3. **Paper's separate world folder** (for example `world_the_end/`) also holds folder-level files such as its own `level.dat`. Only the dimension's data directory is archived; the folder-level files stay. The exact Paper 26.2 layout is verified in T2 before any code depends on it.
+   3. **Paper's per-world files stay.** Paper 26.1+ keeps per-world configuration and data inside the dimension directory:
+      - `paper-world.yml`
+      - `data/paper/`: per-world gamerules and spawn overrides, metadata, and plugin persistent data ([Paper configuration docs](https://docs.papermc.io/paper/reference/configuration/))
+
+      These are configuration and plugin data, not End state, so they are neither archived nor removed (`SeasonTransition.KEPT`). Everything else in the directory is archived, third-party caches such as `DistantHorizons.sqlite` included, since they describe the old End.
 4. **Index:** the End's chunk-provenance records are written to a report under `reports/`, then removed from the index. The terrain they describe no longer exists in the world.
 5. **Commit:** the manifest records the archived dimension (format addition, manifest 1.1) in the same transaction that activates the new season (ADR 0011).
 6. **Rollback** restores the End dimension directory from the operation's own verified copy.
@@ -50,7 +54,8 @@ Archiving only some of these, for example the dragon-fight record without the ch
 **Verification before implementation (root §18).**
 
 - **Dragon-fight location:** confirmed for vanilla 26.2 (`world-format-26.2.md`).
-- **Paper dimension-folder layout:** still unverified. Neither sample world has been saved by Paper 26.x. Until a world saved by Paper 26.2 is inspected, the End archive runs only on the verified vanilla layout (`dimensions/minecraft/the_end/`), and any other layout is inspect-only.
+- **Paper layout:** Paper 26.1+ uses the vanilla layout (Paper's 26.1 announcement and configuration docs). A pre-26.1 Bukkit layout with `world_the_end/` beside the world stays inspect-only, until Minecraft or Paper 26.2 has opened the world once and moved it.
+- **A missing End is regenerated** (2026-10-03; [`world-format-26.2.md`](../compatibility/world-format-26.2.md) §3). Minecraft saves the End's data, the fight included, even in a world whose End was never visited, and that file holds the fresh state. The wiki documents that deleting `dimensions/minecraft/the_end` resets the End ([minecraft.wiki: The End](https://minecraft.wiki/w/The_End)). Because the Tool is offline, this is established from save files and documentation, not by starting a server.
 
 If a version keeps the fight in `level.dat` instead, that version stays inspect-only until a new revision of this ADR adds a lossless `level.dat` writer.
 
@@ -93,4 +98,4 @@ If a version keeps the fight in `level.dat` instead, that version stays inspect-
   - a world without an End
 
   `LocalWorldTransitionTest` (`localWorldTest`) runs the whole transition on temporary copies of both local 26.2 worlds: the long-lived one archived 408 End files (40 MB) and 7,882 records in about 1 s. The originals are checked unmodified.
-- **Still to do.** Manual validation, recorded, on a disposable copy of a real 26.2 world (Tool T14): after the transition, Paper 26.2 generates a fresh End with a new dragon fight. This also confirms the dragon-fight file location and the Paper layout.
+- **Superseded** (2026-10-03, owner): the Tool is offline and has no server or network tests. The evidence above replaces the planned manual validation, which read: after the transition, Paper 26.2 generates a fresh End with a new dragon fight. This also confirms the dragon-fight file location and the Paper layout.

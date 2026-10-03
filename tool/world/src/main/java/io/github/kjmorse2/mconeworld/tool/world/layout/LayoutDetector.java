@@ -140,7 +140,11 @@ public final class LayoutDetector {
     }
   }
 
-  /** Paper's legacy per-dimension world folders sit next to the world ({@code <name>_nether}). */
+  /**
+   * Pre-26.1 Bukkit/Paper per-dimension world folders sit next to the world ({@code
+   * <name>_nether}). Paper 26.1+ uses the vanilla layout and moves them into {@code dimensions/} on
+   * its first start.
+   */
   private static void paperFolders(Path worldDir, List<ValidationIssue> findings) {
     Path parent = worldDir.toAbsolutePath().getParent();
     Path name = worldDir.getFileName();
@@ -154,11 +158,11 @@ public final class LayoutDetector {
             ValidationIssue.warning(
                     WorldIssueCodes.LAYOUT_UNVERIFIED,
                     IssueLocation.root().key("../" + name + suffix),
-                    "A Paper per-dimension world folder sits next to the world; its dimensions are"
-                        + " not read, and the world is inspect-only")
+                    "A pre-26.1 Bukkit/Paper dimension folder sits next to the world; its dimensions"
+                        + " are not read, and the world is inspect-only")
                 .withRemediation(
-                    "Paper 26.2's folder layout is not verified yet (ADR 0010). Report this layout so"
-                        + " it can be verified and supported."));
+                    "Open the world once with Minecraft or Paper 26.2, which moves these folders"
+                        + " into dimensions/, then open that world in the Tool."));
       }
     }
   }

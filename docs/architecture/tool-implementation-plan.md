@@ -181,7 +181,8 @@ Each milestone is one or more commits. Its tests must pass in `./gradlew check`;
 >
 > - The End's index records are reported and removed **after** the commit, as a retry-safe sidecar-only step. A rollback therefore never has to re-add records.
 > - The archive's entries keep their world paths (`world/dimensions/minecraft/the_end/…`).
-> - Only the vanilla 26.1+ layout is writable. Paper's layout stays inspect-only until it is verified.
+> - Paper 26.1+ uses the vanilla layout. Its per-world files in the End (`paper-world.yml`, `data/paper/`) stay in place.
+> - No manual server check: the Tool is offline (owner, 2026-10-03). End regeneration is established from save files and documentation (`world-format-26.2.md` §3).
 
 - **Preconditions:** pinned data version (`MUTABLE`), world unlocked, sidecar clean, no unfinished operations, a reconcile that is current (a pinned index state), and a verified backup no older than this plan.
 - **Plan and preview** show:
@@ -268,12 +269,12 @@ Each milestone is one or more commits. Its tests must pass in `./gradlew check`;
   4. reconcile
   5. back up
   6. create season 2
-  7. start Paper 26.2 and confirm a fresh End generates and the sidecar shows season 2 active, pending application
+  7. confirm the End directory holds only Paper's kept files, if any, and that the sidecar shows season 2 active, pending application. The Tool is offline: nothing starts a server.
 - **Invariants checked throughout:** `git diff --stat offline-tool/` is empty; no world write happens without a verified backup.
 
 ## Risks and dependencies
 
 - **Plugin coordination.** Activation and the End reset change what the plugin must do at startup: apply the spawn and player resets when `pendingActivation` is set, and expect a fresh End. Both are recorded in ADRs 0010 and 0011 for the Paper project. The plugin itself is out of scope here.
-- **Dragon fight and Paper layout.** The owner reports that 26.1+ keeps the dragon fight inside the End dimension directory, and that Paper keeps each dimension in its own world folder. Both are confirmed in T2 (layout) and before T9 (fight), never guessed. A version that keeps the fight in `level.dat` stays inspect-only.
+- **Dragon fight and Paper layout.** Resolved. The dragon fight is inside the End directory in 26.1+, and a missing End is created fresh on load (both from save files: `world-format-26.2.md` §3). Paper 26.1+ uses the vanilla layout (Paper's documentation). A version that keeps the fight in `level.dat` stays inspect-only.
 - **JavaFX's per-platform artifacts** must be locked and verified for every OS in T1, because the repository rules allow mavenCentral only.
 - **Disk space.** A full-world backup per season can be large. T7 checks free space and shows the expected size in the preview.

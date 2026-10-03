@@ -1,6 +1,6 @@
 # MCOneWorld Tool
 
-The offline desktop application of MCOneWorld (JavaFX 25, Java 25). With the server stopped, it opens a world and its sidecar, initializes or reconciles the sidecar, creates verified backups, and creates new seasons: a distant origin and spawn, a fresh End, and offline activation.
+The offline desktop application of MCOneWorld (JavaFX 25, Java 25). It works on a world folder it is given, normally downloaded from the server and uploaded back afterwards together with its sidecar. It opens a world and its sidecar, initializes or reconciles the sidecar, creates verified backups, and creates new seasons: a distant origin and spawn, a fresh End, and offline activation.
 
 - **Plan and status:** [`docs/architecture/tool-implementation-plan.md`](../docs/architecture/tool-implementation-plan.md)
 - **Rules for agents:** [`AGENTS.md`](AGENTS.md)
@@ -17,7 +17,7 @@ T3, session status. `tool/core`'s `ToolSession.inspect(locations, clock)` opens 
 - the world inspection
 - the sidecar state: absent, empty, incomplete, present, needs migration, or unreadable
 - recovery leftovers, the chunk index, and the operation journals
-- for every action, whether it can start, or each reason it can't (server running, sidecar locked, recovery needed, unfinished operation, version not pinned, and so on)
+- for every action, whether it can start, or each reason it can't (world open in Minecraft, sidecar locked, recovery needed, unfinished operation, version not pinned, and so on)
 
 It also checks that the sidecar belongs to this world (manifest 1.1's seed binding), that a newer-format manifest is treated read-only, and that a pending activation blocks the next season.
 
@@ -40,7 +40,7 @@ What it does: creates the sidecar for an existing world. The world is only read.
    - the index verifies
    - the manifest is bound to this world
 
-**Prerequisites.** The server is stopped (`session.lock` free). The sidecar location doesn't exist or is an empty directory, and is not inside the world. The world's seed is readable.
+**Prerequisites.** The world isn't open in Minecraft (`session.lock` free). The sidecar location doesn't exist or is an empty directory, and is not inside the world. The world's seed is readable.
 
 **Backup.** None is needed: nothing in the world is written.
 
@@ -54,11 +54,11 @@ What it does: creates the sidecar for an existing world. The world is only read.
 ./gradlew :tool:world:localWorldTest -PlocalWorlds=TestSaves   # read-only check against local real worlds
 ```
 
-**Chunk trimming** (deleting unwanted chunks) is not part of the Tool. Use MCA Selector, kept unmodified in [`offline-tool/`](../offline-tool/), with the server stopped. Then open the world in the Tool and run **Reconcile**.
+**Chunk trimming** (deleting unwanted chunks) is not part of the Tool. Use MCA Selector, kept unmodified in [`offline-tool/`](../offline-tool/), on the same world folder. Then open the world in the Tool and run **Reconcile**.
 
 ## Reconciling after trimming (T6)
 
-Run this after trimming the world with MCA Selector (server stopped), or whenever the world changed without the plugin.
+Run this after trimming the world with MCA Selector, or whenever the world changed without the plugin.
 
 1. **Preview** (`preview(locations, acknowledgeProtectedRemovals)`). Compares every region chunk of the world with the chunk index, and shows per dimension:
    - chunks gained
@@ -76,7 +76,7 @@ Run this after trimming the world with MCA Selector (server stopped), or wheneve
    - the report holds every planned removal
 5. **Afterwards.** A second preview reports *nothing to do*, and apply refuses.
 
-**Prerequisites.** The server is stopped. The sidecar is usable and belongs to this world. No other operation is unfinished.
+**Prerequisites.** The world isn't open in Minecraft. The sidecar is usable and belongs to this world. No other operation is unfinished.
 
 **Backup.** None is needed: the world is only read, and removed history is in the report.
 
@@ -98,7 +98,7 @@ Run this after trimming the world with MCA Selector (server stopped), or wheneve
 3. **Validate.** The recorded backup verifies against its `backup.json`, and the world did not change.
 4. **Verify later** (`BackupService.verify`). Re-reads a recorded backup at any time and reports partial, changed, missing, and unexpected files.
 
-**Prerequisites.** The server is stopped, the sidecar is usable, and there is enough free space.
+**Prerequisites.** The world isn't open in Minecraft, the sidecar is usable, and there is enough free space.
 
 **If interrupted or cancelled** (interrupt the worker thread). **Resume** removes this backup's own partial copy and copies again; a partial copy is never recorded.
 
@@ -129,7 +129,7 @@ This is the only operation that writes to the world. The exact contract is [`doc
 
 **Prerequisites.** All must hold:
 
-- The server is stopped.
+- The world isn't open in Minecraft (`session.lock` free).
 - The world is 26.2 (data version 4903) in the vanilla 26.1+ layout.
 - The sidecar is usable and belongs to this world, with no unfinished operation.
 - No earlier season is still waiting for the server to apply it.
@@ -146,7 +146,7 @@ This is the only operation that writes to the world. The exact contract is [`doc
 
    It writes nothing.
 2. **Apply** (`apply`). First re-verifies every byte of the full backup, then:
-   1. copies the End directory (`dimensions/minecraft/the_end`, which holds the dragon fight in 26.1+) into a verified archive in `backups/<operation>/`, and records it
+   1. copies the End directory (`dimensions/minecraft/the_end`, which holds the dragon fight in 26.1+) into a verified archive in `backups/<operation>/`, and records it. Paper's per-world configuration and data there (`paper-world.yml`, `data/paper/`) are not End state: they stay in place.
    2. deletes each End file only if it is byte-identical to its archived copy; any other file stops the operation
    3. **commits**: appends the season with its origins and planned spawn, activates it pending application by the server (the previous season becomes archived), and records the archived End
    4. writes the End's index records to `reports/season-transition-<operation>.jsonl`, then removes them from the index
@@ -156,7 +156,7 @@ This is the only operation that writes to the world. The exact contract is [`doc
    - the season is active and pending
    - the index matches the world and verifies
    - the report is complete
-4. **Next.** Start the server with the MCOneWorld plugin. It generates a fresh End and dragon fight, places the spawn, and resets players (ADR 0011). Until it has, the Tool refuses another season.
+4. **Next.** Upload the world and its sidecar, and start the server. Minecraft creates the missing End when it loads the world, exactly as for a brand-new world, so the dragon fight starts fresh. The MCOneWorld plugin places the spawn and resets players (ADR 0011). Until the plugin has applied the season, the Tool refuses another one.
 
 **If interrupted.** **Resume** (`resume`) continues from the journal and ends exactly as an uninterrupted run would.
 
@@ -164,4 +164,6 @@ This is the only operation that writes to the world. The exact contract is [`doc
 
 **After the commit.** Nothing is undone automatically. The full backup restores the world and sidecar by hand (`RestoreInstructions`).
 
-**Real worlds.** On temporary copies of both local worlds (`localWorldTest`), the long-lived world's transition archived 408 End files (40 MB) and 7,882 records in about 1 s. **Still to do:** a recorded check that Paper 26.2 then generates a fresh End (T14).
+**Real worlds.** On temporary copies of both local worlds (`localWorldTest`), the long-lived world's transition archived 408 End files (40 MB) and 7,882 records in about 1 s.
+
+**Why an empty End is enough.** Evidence is in [`world-format-26.2.md`](../docs/compatibility/world-format-26.2.md) §3. Minecraft saves the End's data even for a world whose End was never visited. That never-visited fight file is the fresh state: no dragon killed, and the arena not yet scanned. So a world without End files gets a new End and a new fight on load.

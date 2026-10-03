@@ -79,6 +79,7 @@ class SeasonTransitionTest {
   private static final String FIGHT =
       SeasonTransition.END_DIR + "/data/minecraft/ender_dragon_fight.dat";
   private static final byte[] FIGHT_BYTES = "dragon".getBytes(StandardCharsets.UTF_8);
+  private static final byte[] PAPER_CONFIG = "_version: 31\n".getBytes(StandardCharsets.UTF_8);
   private static final SeasonProposal PLACEMENT =
       new SeasonPlanner(PlannerSettings.DEFAULT).proposal(20_480, 0);
 
@@ -109,7 +110,10 @@ class SeasonTransitionTest {
     if (withEnd) {
       w.chunks(E, "region", square(E, -2, 2), 1_790_000_000L)
           .chunks(E, "entities", square(E, -1, 1), 1_790_000_000L)
-          .file(FIGHT, FIGHT_BYTES);
+          .file(FIGHT, FIGHT_BYTES)
+          // Paper 26.1+'s per-world configuration and data: kept in place
+          .file(SeasonTransition.END_DIR + "/paper-world.yml", PAPER_CONFIG)
+          .file(SeasonTransition.END_DIR + "/data/paper/level_overrides.dat", new byte[] {4, 5});
     }
     return w;
   }
@@ -153,8 +157,11 @@ class SeasonTransitionTest {
     try (Stream<Path> walk = Files.walk(world)) {
       for (Path f : walk.filter(Files::isRegularFile).toList()) {
         String relative = world.relativize(f).toString().replace('\\', '/');
+        String end = SeasonTransition.END_DIR + "/";
         if (relative.equals("session.lock")
-            || (!includeEnd && relative.startsWith(SeasonTransition.END_DIR + "/"))) {
+            || (!includeEnd
+                && relative.startsWith(end)
+                && !SeasonTransition.isKept(relative.substring(end.length())))) {
           continue;
         }
         files.put(relative, FileCopy.sha256(f).toString());
@@ -163,9 +170,12 @@ class SeasonTransitionTest {
     return files;
   }
 
+  /** The End's files that are archived: all but the kept ones. */
   private static Map<String, String> endFiles(Path world) throws IOException {
     Map<String, String> all = files(world, true);
-    all.keySet().removeIf(p -> !p.startsWith(SeasonTransition.END_DIR + "/"));
+    String end = SeasonTransition.END_DIR + "/";
+    all.keySet()
+        .removeIf(p -> !p.startsWith(end) || SeasonTransition.isKept(p.substring(end.length())));
     return all;
   }
 
@@ -192,7 +202,15 @@ class SeasonTransitionTest {
       ToolLocations l, TransitionPreview preview, Map<String, String> outsideBefore)
       throws Exception {
     OperationId op = preview.plan().id();
-    assertThat(SeasonTransition.endPath(l)).doesNotExist();
+    // Only Paper's kept configuration and data remain in the End; Minecraft creates the rest.
+    try (Stream<Path> left = Files.walk(SeasonTransition.endPath(l))) {
+      assertThat(
+              left.filter(Files::isRegularFile)
+                  .map(p -> SeasonTransition.endPath(l).relativize(p).toString().replace('\\', '/'))
+                  .sorted()
+                  .toList())
+          .containsExactly("data/paper/level_overrides.dat", "paper-world.yml");
+    }
     assertThat(files(l.worldDir(), true)).isEqualTo(outsideBefore);
 
     ManifestDocument doc = manifest(l);
@@ -234,7 +252,7 @@ class SeasonTransitionTest {
     TransitionPreview preview = service().preview(l, request());
 
     // Chunks -2..1 and -1..0 each span 4 regions: 4 region files, 4 entities files, the fight
-    assertThat(preview.endFiles()).isEqualTo(9);
+    assertThat(preview.endFiles()).isEqualTo(9); // Paper's two kept files are not counted
     assertThat(preview.endRecords()).isEqualTo(16);
     assertThat(preview.protectedEndRecords()).isZero();
     assertThat(preview.previous()).isNull();
@@ -291,6 +309,18 @@ class SeasonTransitionTest {
     ArchiveState state = manifest(l).state();
     assertThat(state.season(first).orElseThrow().status()).isEqualTo(SeasonStatus.ARCHIVED);
     assertThat(state.archivedDimensions().getFirst().season()).isEqualTo(first);
+  }
+
+  @Test
+  void withoutPaperFilesTheEndDirectoryIsRemovedEntirely() throws Exception {
+    SyntheticWorld w = world(4903, true);
+    Files.delete(w.dir().resolve(SeasonTransition.END_DIR + "/paper-world.yml"));
+    Files.delete(w.dir().resolve(SeasonTransition.END_DIR + "/data/paper/level_overrides.dat"));
+    Files.delete(w.dir().resolve(SeasonTransition.END_DIR + "/data/paper"));
+    ToolLocations l = prepared(w, true);
+    service().apply(service().preview(l, request()));
+    assertThat(SeasonTransition.endPath(l)).doesNotExist();
+    assertThat(l.worldDir().resolve("dimensions/minecraft/overworld")).isDirectory();
   }
 
   @Test

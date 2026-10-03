@@ -144,8 +144,12 @@ import org.jspecify.annotations.Nullable;
  * restores the End from the archive ({@link OperationWork#rollback}); after it, the season stands
  * and the full backup is the way back.
  *
+ * <p>Minecraft creates a missing End, with a fresh dragon fight, when it loads the world: in 26.1+
+ * the fight is saved in the End's own {@code data/minecraft/ender_dragon_fight.dat}. The {@link
+ * #KEPT} configuration (Paper's) is neither archived nor removed.
+ *
  * <p>The Tool never writes {@code level.dat}, player data, or another dimension: every file outside
- * the End is pinned in the plan and checked unchanged afterwards.
+ * the End, and every kept file, is pinned in the plan and checked unchanged afterwards.
  */
 public final class SeasonTransition {
   /** The operation type. */
@@ -153,6 +157,13 @@ public final class SeasonTransition {
 
   /** The End's directory in the 26.1+ layout, relative to the world. */
   public static final String END_DIR = "dimensions/minecraft/the_end";
+
+  /**
+   * Paths in the End directory that are configuration or plugin data rather than End state, kept in
+   * place: Paper 26.1+'s per-world configuration and its per-world data (gamerules, spawn,
+   * metadata, plugin persistent data). A directory keeps its whole subtree.
+   */
+  public static final List<String> KEPT = List.of("paper-world.yml", "data/paper");
 
   /** The role of the End-records report in the manifest's {@code files}. */
   public static final String REPORT_ROLE = "archived-records";
@@ -744,7 +755,7 @@ public final class SeasonTransition {
       return; // removed by an earlier attempt
     }
     Map<String, BackupEntry> archived = byEndPath(archive);
-    FileTree now = FileTree.walk(root, path -> false);
+    FileTree now = FileTree.walk(root, SeasonTransition::isKept);
     if (!now.issues().isEmpty()) {
       throw new ToolException(
           TransitionIssueCodes.CHANGED,
@@ -771,11 +782,17 @@ public final class SeasonTransition {
         hook.at("end-file-deleted");
       }
     }
+    if (!FileTree.walk(root, SeasonTransition::isKept).files().isEmpty()) {
+      throw new ToolException(
+          TransitionIssueCodes.CHANGED, "A file appeared in the End during removal");
+    }
     List<Path> directories;
     try (Stream<Path> walk = Files.walk(root)) {
-      // Only directories: a file not verified above is never deleted, and it stops the removal.
+      // Only directories outside the kept paths, deepest first. Every file left is a kept one
+      // (checked above), so a directory still holding something holds kept files: it stays.
       directories =
           walk.filter(p -> Files.isDirectory(p, LinkOption.NOFOLLOW_LINKS))
+              .filter(p -> !isKept(relative(root, p)))
               .sorted(Comparator.comparingInt(Path::getNameCount).reversed())
               .toList();
     }
@@ -783,8 +800,7 @@ public final class SeasonTransition {
       try {
         Files.delete(dir);
       } catch (DirectoryNotEmptyException e) {
-        throw new ToolException(
-            TransitionIssueCodes.CHANGED, "A file appeared in the End during removal: " + dir);
+        // holds kept files
       }
     }
     syncDirectory(Objects.requireNonNull(root.getParent()));
@@ -980,8 +996,10 @@ public final class SeasonTransition {
     ManifestDocument doc = manifest(store);
     return switch (plan.validations().get(check).check().value()) {
       case CHECK_END -> {
-        if (Files.exists(endPath(locations), LinkOption.NOFOLLOW_LINKS)) {
-          yield "The End directory still exists";
+        Path end = endPath(locations);
+        if (Files.exists(end, LinkOption.NOFOLLOW_LINKS)
+            && !FileTree.walk(end, SeasonTransition::isKept).files().isEmpty()) {
+          yield "The End still holds files besides the kept configuration";
         }
         BackupId id = archiveOf(plan.id());
         BackupRecord record = recorded(doc, id);
@@ -1087,14 +1105,33 @@ public final class SeasonTransition {
           END_DIR + " is not a plain directory",
           "Replace the link or file with the End's directory.");
     }
-    return FileTree.walk(root, path -> false);
+    return FileTree.walk(root, SeasonTransition::isKept);
   }
 
   /** Every world file but {@code session.lock} and the End's. */
   private static FileTree outsideEnd(ToolLocations locations) throws IOException {
+    String prefix = END_DIR + "/";
     return FileTree.walk(
         locations.worldDir(),
-        path -> path.equals(SessionLockProbe.FILE_NAME) || path.equals(END_DIR));
+        path -> {
+          if (path.equals(SessionLockProbe.FILE_NAME)) {
+            return true;
+          }
+          if (!path.startsWith(prefix)) {
+            return false;
+          }
+          String r = path.substring(prefix.length());
+          return !isKept(r) && KEPT.stream().noneMatch(k -> k.startsWith(r + "/"));
+        });
+  }
+
+  /** Whether {@code endRelative} is a kept path or lies below one. */
+  static boolean isKept(String endRelative) {
+    return KEPT.stream().anyMatch(k -> endRelative.equals(k) || endRelative.startsWith(k + "/"));
+  }
+
+  private static String relative(Path root, Path p) {
+    return root.relativize(p).toString().replace('\\', '/');
   }
 
   private static BackupEntryPath entryPath(String endRelative) {

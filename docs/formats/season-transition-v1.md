@@ -33,8 +33,8 @@ The season's `createdAt` is the plan's `createdAt`.
 |---|---|---|
 | manifest | `AT_REVISION` | revision and SHA-256 of the manifest's exact bytes |
 | `world:files` | checksum | fingerprint of every world file except `session.lock`: path, size, and modification time |
-| `world:files_outside_end` | checksum | the same, also without `dimensions/minecraft/the_end` |
-| `world:end_files` | checksum | the same, of `dimensions/minecraft/the_end` only |
+| `world:files_outside_end` | checksum | the same, also without `dimensions/minecraft/the_end` except its kept paths (§1.6) |
+| `world:end_files` | checksum | the same, of `dimensions/minecraft/the_end` only, without its kept paths |
 | `world:seed` | checksum | `WorldBinding.seedChecksum` of the seed |
 | `sidecar:chunk-index` | checksum | the chunk-index pin |
 | `minecraft:data_version` | fact | the world's data version (always 4903 here) |
@@ -46,7 +46,7 @@ When the world has End files, four steps; otherwise only `commit_season`.
 
 | # | Action | Effect | Retry |
 |---|---|---|---|
-| 0 | `mconeworld:archive_end` | Copy every file of `dimensions/minecraft/the_end` into backup `<operation id>` (`DIMENSION_ARCHIVE`, entries `world/dimensions/minecraft/the_end/…`; [`backup-v1.md`](backup-v1.md)), verify the payload, and record it in the manifest. | Already recorded: done. A partial copy of this backup is deleted and copied again. |
+| 0 | `mconeworld:archive_end` | Copy every file of `dimensions/minecraft/the_end`, except the kept paths (§1.6), into backup `<operation id>` (`DIMENSION_ARCHIVE`, entries `world/dimensions/minecraft/the_end/…`; [`backup-v1.md`](backup-v1.md)), verify the payload, and record it in the manifest. | Already recorded: done. A partial copy of this backup is deleted and copied again. |
 | 1 | `mconeworld:remove_end_files` | Check that every End file is listed in the archive with the same size and SHA-256, then delete them, then the emptied directories. | End directory gone: done. Files already deleted are skipped. |
 | 2 | `mconeworld:commit_season` | One manifest transaction: `appendSeason` (planned, with both origins and the spawn), `activateForApplication` (the previous season becomes `ARCHIVED`), and, if archived, `withArchivedDimension(minecraft:the_end, previous season, this operation, the archive, now)`. **Commit point.** | Season present: done. |
 | 3 | `mconeworld:remove_end_records` | Write every End record to `reports/season-transition-<operation>.jsonl` (§2) and reference it in the manifest, then remove the End's records from the index. | Report referenced: not rewritten. Removal is idempotent. |
@@ -57,7 +57,7 @@ A file in the End that the archive does not hold, or one that differs from it, i
 
 In this order, those for the End only when it is archived:
 
-1. `mconeworld:end_archived`: the End directory is gone, and the recorded archive verifies.
+1. `mconeworld:end_archived`: the End holds no files but kept ones, and the recorded archive verifies.
 2. `mconeworld:world_outside_end_unchanged`: `world:files_outside_end` is unchanged. This covers `level.dat`, player data, and the other dimensions.
 3. `mconeworld:season_active_pending`: the new season is active and pending application, the archived End is recorded, and the archive state validates.
 4. `mconeworld:index_matches_world`: the index holds exactly the world's chunks.
@@ -75,6 +75,17 @@ After a terminal failure before the commit step, the Tool rolls back at once (`R
 - **Not restored.** Empty directories are not recreated; Minecraft creates them.
 
 After the commit, rollback is refused (`tool.operation.rollback_refused`).
+
+### 1.6 Kept paths
+
+Paper 26.1+'s per-world configuration and data inside the End directory are not End state:
+
+- `paper-world.yml`
+- `data/paper/`, with its whole subtree
+
+They are neither archived nor removed, and `world:end_files` excludes them. `world:files_outside_end` includes them, so the check after the transition also proves they are unchanged. The End directory and its `data/` remain only if they hold kept files.
+
+Minecraft creates every other End file when it next loads the world (`world-format-26.2.md` §3).
 
 ## 2. End-records report
 
