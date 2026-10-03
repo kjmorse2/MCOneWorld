@@ -21,7 +21,32 @@ T3, session status. `tool/core`'s `ToolSession.inspect(locations, clock)` opens 
 
 It also checks that the sidecar belongs to this world (manifest 1.1's seed binding), that a newer-format manifest is treated read-only, and that a pending activation blocks the next season.
 
-T4, shared formats. Manifest 1.1 (world binding, pending activation, archived dimensions) and the `mconeworld-backup` 1.0 format (`docs/formats/backup-v1.md`) are in `shared:sidecar`. The app still opens an empty main window.
+T4, shared formats. Manifest 1.1 (world binding, pending activation, archived dimensions) and the `mconeworld-backup` 1.0 format (`docs/formats/backup-v1.md`) are in `shared:sidecar`.
+
+T5, initialization (`tool.core.init.SidecarInitializer`, operation `mconeworld:sidecar_init`). The app still opens an empty main window.
+
+## Initializing a sidecar (T5)
+
+What it does: creates the sidecar for an existing world. The world is only read.
+
+1. **Preview** (`preview`). Scans every region, entity, and POI header and shows the chunk counts per dimension and any damaged headers. It writes nothing.
+2. **Plan.** The plan pins three things: the world's seed hash, a digest of every region header, and that no manifest exists yet.
+3. **Apply** (`apply`). Creates the sidecar directory if needed, records the plan in an operation journal, and then:
+   1. creates the first manifest, bound to the world's seed
+   2. creates an empty chunk index
+   3. records every existing chunk as *legacy* provenance: its season is unknown and never guessed
+4. **Validate.** Three checks:
+   - the index holds exactly the world's chunks, and the world is unchanged
+   - the index verifies
+   - the manifest is bound to this world
+
+**Prerequisites.** The server is stopped (`session.lock` free). The sidecar location doesn't exist or is an empty directory, and is not inside the world. The world's seed is readable.
+
+**Backup.** None is needed: nothing in the world is written.
+
+**If interrupted.** Every step can be retried. The session offers **Resume** (`resume`), which continues from the journal. If the world changed after planning, the operation stops and nothing is guessed. To start over, delete the new sidecar directory; the world is untouched.
+
+**Real worlds.** Validated read-only on both local 26.2 worlds (`./gradlew :tool:core:localWorldTest -PlocalWorlds=TestSaves`): 117,792 chunks in 0.8 s for the long-lived world.
 
 ```sh
 ./gradlew toolCheck          # tests (UI tests run headless through Monocle), formatting, analysis, guards

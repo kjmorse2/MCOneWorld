@@ -3,6 +3,7 @@ package io.github.kjmorse2.mconeworld.tool.core.session;
 
 import io.github.kjmorse2.mconeworld.domain.OperationId;
 import io.github.kjmorse2.mconeworld.domain.archive.WorldBinding;
+import io.github.kjmorse2.mconeworld.domain.operation.OperationType;
 import io.github.kjmorse2.mconeworld.domain.validation.IssueLocation;
 import io.github.kjmorse2.mconeworld.domain.validation.ValidationIssue;
 import io.github.kjmorse2.mconeworld.domain.validation.ValidationResult;
@@ -16,6 +17,7 @@ import io.github.kjmorse2.mconeworld.sidecar.manifest.ManifestLimits;
 import io.github.kjmorse2.mconeworld.sidecar.migration.MigrationException;
 import io.github.kjmorse2.mconeworld.sidecar.migration.MigrationPlanner;
 import io.github.kjmorse2.mconeworld.sidecar.migration.MigrationRegistry;
+import io.github.kjmorse2.mconeworld.sidecar.operation.JournalIntegrity;
 import io.github.kjmorse2.mconeworld.sidecar.operation.OperationJournals;
 import io.github.kjmorse2.mconeworld.sidecar.operation.OperationStatus;
 import io.github.kjmorse2.mconeworld.sidecar.storage.RecoveryFinding;
@@ -110,20 +112,25 @@ public final class ToolSession {
             List.of(),
             ValidationResult.of(findings));
       }
+      // An interrupted initialization leaves journals before the first manifest exists.
+      List<OperationStatus> operations = operations(store, clock);
+      boolean initializing = operations.stream().anyMatch(op -> resumable(op));
       findings.add(
           ValidationIssue.error(
                   SessionIssueCodes.SIDECAR_INCOMPLETE,
                   IssueLocation.root().key("manifest.json"),
                   "The sidecar directory has files but no manifest")
               .withRemediation(
-                  "The Tool never creates a sidecar over existing files. Restore the manifest from a"
-                      + " backup, or choose an empty directory."));
+                  initializing
+                      ? "An initialization was interrupted: resume it."
+                      : "The Tool never creates a sidecar over existing files. Restore the manifest"
+                          + " from a backup, or choose an empty directory."));
       return new SidecarSnapshot(
           SidecarState.INCOMPLETE,
           Optional.empty(),
           Optional.of(recovery),
           Optional.empty(),
-          List.of(),
+          operations,
           ValidationResult.of(findings));
     }
 
@@ -158,11 +165,7 @@ public final class ToolSession {
     ChunkIndexStatus index = ChunkIndexStore.of(store).inspect();
     findings.addAll(index.findings().issues());
 
-    OperationJournals journals = OperationJournals.of(store, clock);
-    List<OperationStatus> operations = new ArrayList<>();
-    for (OperationId id : journals.list()) {
-      operations.add(journals.inspect(id));
-    }
+    List<OperationStatus> operations = operations(store, clock);
     return new SidecarSnapshot(
         SidecarState.PRESENT,
         Optional.of(manifest),
@@ -170,6 +173,38 @@ public final class ToolSession {
         Optional.of(index),
         operations,
         ValidationResult.of(findings));
+  }
+
+  private static List<OperationStatus> operations(SidecarStore store, Clock clock)
+      throws IOException {
+    OperationJournals journals = OperationJournals.of(store, clock);
+    List<OperationStatus> operations = new ArrayList<>();
+    for (OperationId id : journals.list()) {
+      operations.add(journals.inspect(id));
+    }
+    return operations;
+  }
+
+  /** The operation types this Tool can continue after an interruption. */
+  public static final List<OperationType> RESUMABLE_TYPES =
+      List.of(OperationType.of("mconeworld:sidecar_init"));
+
+  /**
+   * Whether this Tool can continue {@code op}: an intact journal of a type it knows, not finished,
+   * and not failed (a failed operation is never retried automatically).
+   */
+  static boolean resumable(OperationStatus op) {
+    var progress = op.progress();
+    var plan = op.plan();
+    return op.integrity() == JournalIntegrity.INTACT
+        && op.writable()
+        && plan != null
+        && RESUMABLE_TYPES.contains(plan.plan().type())
+        && progress != null
+        && switch (progress.state()) {
+          case PLANNED, BACKED_UP, APPLYING, VALIDATING -> true;
+          default -> false;
+        };
   }
 
   /** Whether an explicit migration path to the current schema exists (read-only dry run). */
@@ -214,6 +249,22 @@ public final class ToolSession {
               block(
                   SessionIssueCodes.SIDECAR_INCOMPLETE,
                   "A sidecar (or other files) already exists here"));
+        }
+        serverStopped(world, b);
+      }
+      case RESUME_OPERATION -> {
+        if (sidecar.operations().stream().noneMatch(ToolSession::resumable)) {
+          b.add(
+              block(
+                  SessionIssueCodes.OPERATION_UNFINISHED,
+                  "No interrupted operation this Tool can resume"));
+        }
+        if (sidecar.recovery().map(r -> !r.findings().isEmpty()).orElse(false)) {
+          b.add(
+              block(
+                      SessionIssueCodes.RECOVERY_NEEDED,
+                      "An interrupted commit must be recovered first")
+                  .withRemediation("Run Recover."));
         }
         serverStopped(world, b);
       }

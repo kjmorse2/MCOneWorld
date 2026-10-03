@@ -9,7 +9,7 @@ MIT-licensed. See [`LICENSE`](LICENSE) and [`NOTICE.md`](NOTICE.md), which cover
 | Path | What it is | Status |
 |---|---|---|
 | [`shared/`](shared/README.md) | Platform-neutral Java libraries: `domain`, `sidecar`, `protocol`, `test-fixtures` | Release candidate `shared 0.1.0-rc.1`: prompts 00–11 complete. See the [release audit](docs/architecture/shared-release-audit.md). |
-| [`tool/`](tool/README.md) | MCOneWorld Tool: the offline desktop application (JavaFX) | In progress. See the [implementation plan](docs/architecture/tool-implementation-plan.md); T0–T4 done: decisions, build scaffold, read-only world access, session status, shared format additions (manifest 1.1, backups). |
+| [`tool/`](tool/README.md) | MCOneWorld Tool: the offline desktop application (JavaFX) | In progress. See the [implementation plan](docs/architecture/tool-implementation-plan.md); T0–T5 done: decisions, build scaffold, read-only world access, session status, shared format additions (manifest 1.1, backups), sidecar initialization. |
 | `offline-tool/` | MCA Selector 2.9, imported with `git subtree` from `Querz/mcaselector`. It is used unmodified for chunk trimming; the Tool vendors selected pieces of it (ADR 0009). | Separate Gradle build. Untouched upstream code. |
 | `paper-plugin/`, `fabric-client/` | MCOneWorld Paper and MCOneWorld Client | Not started |
 | `build-logic/` | Gradle convention plugins (`mconeworld.java-conventions`, `mconeworld.shared-module`) and architecture guards | |

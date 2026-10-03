@@ -5,6 +5,8 @@ package io.github.kjmorse2.mconeworld.tool.core.session;
 public enum SessionAction {
   /** Create a sidecar and record the world's chunks as legacy provenance (T5). */
   INITIALIZE_SIDECAR,
+  /** Continue an interrupted operation from its journal, explicitly (for example T5's init). */
+  RESUME_OPERATION,
   /** Resolve leftovers of an interrupted sidecar commit, explicitly (shared recovery). */
   RECOVER_SIDECAR,
   /** Migrate an older manifest to the current schema, explicitly (ADR 0005). */
