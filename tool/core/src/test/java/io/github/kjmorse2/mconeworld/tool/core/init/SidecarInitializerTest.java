@@ -18,6 +18,7 @@ import io.github.kjmorse2.mconeworld.sidecar.storage.SidecarRoot;
 import io.github.kjmorse2.mconeworld.sidecar.storage.SidecarStore;
 import io.github.kjmorse2.mconeworld.tool.core.ProgressListener;
 import io.github.kjmorse2.mconeworld.tool.core.ToolException;
+import io.github.kjmorse2.mconeworld.tool.core.operation.OperationRunner;
 import io.github.kjmorse2.mconeworld.tool.core.session.SessionAction;
 import io.github.kjmorse2.mconeworld.tool.core.session.SessionIssueCodes;
 import io.github.kjmorse2.mconeworld.tool.core.session.SessionStatus;
@@ -98,7 +99,7 @@ class SidecarInitializerTest {
     return new ToolLocations(world(), temp.resolve("server").resolve(sidecar));
   }
 
-  private static SidecarInitializer initializer(SidecarInitializer.Hook hook) {
+  private static SidecarInitializer initializer(OperationRunner.Hook hook) {
     return new SidecarInitializer(CLOCK, ProgressListener.NONE, hook, BATCH);
   }
 
@@ -110,7 +111,7 @@ class SidecarInitializerTest {
   @Test
   void previewCountsEveryDimensionAndWritesNothing() throws Exception {
     InitPreview preview =
-        initializer(SidecarInitializer.Hook.NONE).preview(locations("mconeworld-data"));
+        initializer(OperationRunner.Hook.NONE).preview(locations("mconeworld-data"));
     assertThat(preview.inventory().dimension(O).orElseThrow().regionChunks()).isEqualTo(70);
     assertThat(preview.inventory().dimension(O).orElseThrow().entityChunks()).isEqualTo(4);
     assertThat(preview.inventory().dimension(N).orElseThrow().regionChunks()).isEqualTo(9);
@@ -126,7 +127,7 @@ class SidecarInitializerTest {
   void applyCreatesABoundSidecarWithEveryChunkAsLegacyAndLeavesTheWorldAlone() throws Exception {
     Map<String, Long> worldBefore = snapshot(world());
     ToolLocations locations = locations("mconeworld-data");
-    SidecarInitializer init = initializer(SidecarInitializer.Hook.NONE);
+    SidecarInitializer init = initializer(OperationRunner.Hook.NONE);
     InitResult result = init.apply(init.preview(locations));
 
     SessionStatus status = ToolSession.inspect(locations, CLOCK);
@@ -157,7 +158,7 @@ class SidecarInitializerTest {
             FileChannel.open(world().resolve("session.lock"), StandardOpenOption.WRITE);
         FileLock lock = channel.lock()) {
       assertThat(lock.isValid()).isTrue();
-      assertThatThrownBy(() -> initializer(SidecarInitializer.Hook.NONE).preview(locations))
+      assertThatThrownBy(() -> initializer(OperationRunner.Hook.NONE).preview(locations))
           .isInstanceOfSatisfying(
               ToolException.class,
               e -> {
@@ -165,7 +166,7 @@ class SidecarInitializerTest {
                 assertThat(e.findings().has(SessionIssueCodes.SERVER_RUNNING)).isTrue();
               });
     }
-    SidecarInitializer init = initializer(SidecarInitializer.Hook.NONE);
+    SidecarInitializer init = initializer(OperationRunner.Hook.NONE);
     InitPreview preview = init.preview(locations);
     init.apply(preview);
     assertThatThrownBy(() -> init.apply(preview))
@@ -176,7 +177,7 @@ class SidecarInitializerTest {
   @Test
   void aWorldChangedSincePlanningIsRefusedBeforeAnythingIsCreated() throws Exception {
     ToolLocations locations = locations("mconeworld-data");
-    SidecarInitializer init = initializer(SidecarInitializer.Hook.NONE);
+    SidecarInitializer init = initializer(OperationRunner.Hook.NONE);
     InitPreview preview = init.preview(locations);
     SyntheticWorld.modern(world()).chunks(O, "region", List.of(new ChunkPosition(O, 500, 500)), 1L);
     assertThatThrownBy(() -> init.apply(preview))
@@ -212,11 +213,10 @@ class SidecarInitializerTest {
   @ParameterizedTest
   @MethodSource("crashPoints")
   void aCrashAnywhereResumesToTheSameResult(String point) throws Exception {
-    InitPreview reference =
-        initializer(SidecarInitializer.Hook.NONE).preview(locations("reference"));
+    InitPreview reference = initializer(OperationRunner.Hook.NONE).preview(locations("reference"));
     InitPreview crashed =
         new InitPreview(locations("crashed"), reference.plan(), reference.inventory());
-    initializer(SidecarInitializer.Hook.NONE).apply(reference);
+    initializer(OperationRunner.Hook.NONE).apply(reference);
 
     boolean[] fired = {false};
     SidecarInitializer crashing =
@@ -236,7 +236,7 @@ class SidecarInitializerTest {
         .isTrue();
     assertThat(interrupted.action(SessionAction.INITIALIZE_SIDECAR).available()).isFalse();
 
-    initializer(SidecarInitializer.Hook.NONE).resume(crashed.locations(), crashed.plan().id());
+    initializer(OperationRunner.Hook.NONE).resume(crashed.locations(), crashed.plan().id());
 
     assertThat(Files.readAllBytes(crashed.locations().sidecarDir().resolve("manifest.json")))
         .isEqualTo(Files.readAllBytes(reference.locations().sidecarDir().resolve("manifest.json")));
@@ -249,7 +249,7 @@ class SidecarInitializerTest {
   @Test
   void resumingACompletedInitializationChangesNothingAndACancelledOneIsRefused() throws Exception {
     ToolLocations locations = locations("mconeworld-data");
-    SidecarInitializer init = initializer(SidecarInitializer.Hook.NONE);
+    SidecarInitializer init = initializer(OperationRunner.Hook.NONE);
     InitResult done = init.apply(init.preview(locations));
     Map<String, Long> before = snapshot(locations.sidecarDir());
     assertThat(init.resume(locations, done.operation()).archive()).isEqualTo(done.archive());

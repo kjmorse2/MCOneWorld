@@ -9,15 +9,12 @@ import io.github.kjmorse2.mconeworld.domain.archive.ArchiveState;
 import io.github.kjmorse2.mconeworld.domain.archive.WorldBinding;
 import io.github.kjmorse2.mconeworld.domain.coordinate.ChunkRectangle;
 import io.github.kjmorse2.mconeworld.domain.operation.ActionKey;
+import io.github.kjmorse2.mconeworld.domain.operation.BackupReference;
 import io.github.kjmorse2.mconeworld.domain.operation.BackupRequirement;
 import io.github.kjmorse2.mconeworld.domain.operation.ExpectedManifest;
-import io.github.kjmorse2.mconeworld.domain.operation.FailureReason;
 import io.github.kjmorse2.mconeworld.domain.operation.ImpactClass;
 import io.github.kjmorse2.mconeworld.domain.operation.InputKey;
-import io.github.kjmorse2.mconeworld.domain.operation.JournalEvent;
 import io.github.kjmorse2.mconeworld.domain.operation.OperationPlan;
-import io.github.kjmorse2.mconeworld.domain.operation.OperationProgress;
-import io.github.kjmorse2.mconeworld.domain.operation.OperationState;
 import io.github.kjmorse2.mconeworld.domain.operation.OperationTarget;
 import io.github.kjmorse2.mconeworld.domain.operation.OperationText;
 import io.github.kjmorse2.mconeworld.domain.operation.OperationType;
@@ -37,7 +34,6 @@ import io.github.kjmorse2.mconeworld.sidecar.index.ChunkIndexSnapshot;
 import io.github.kjmorse2.mconeworld.sidecar.index.ChunkIndexState;
 import io.github.kjmorse2.mconeworld.sidecar.index.ChunkIndexStore;
 import io.github.kjmorse2.mconeworld.sidecar.index.ChunkMutation;
-import io.github.kjmorse2.mconeworld.sidecar.index.ChunkQuery;
 import io.github.kjmorse2.mconeworld.sidecar.index.SidecarChunkIndex;
 import io.github.kjmorse2.mconeworld.sidecar.manifest.ManifestDocument;
 import io.github.kjmorse2.mconeworld.sidecar.manifest.ManifestException;
@@ -51,9 +47,12 @@ import io.github.kjmorse2.mconeworld.sidecar.storage.StaleLockPolicy;
 import io.github.kjmorse2.mconeworld.tool.core.ProgressListener;
 import io.github.kjmorse2.mconeworld.tool.core.ToolException;
 import io.github.kjmorse2.mconeworld.tool.core.ToolInfo;
-import io.github.kjmorse2.mconeworld.tool.core.inventory.DimensionCounts;
+import io.github.kjmorse2.mconeworld.tool.core.inventory.IndexComparison;
 import io.github.kjmorse2.mconeworld.tool.core.inventory.InventoryScanner;
+import io.github.kjmorse2.mconeworld.tool.core.inventory.WorldChunks;
 import io.github.kjmorse2.mconeworld.tool.core.inventory.WorldInventory;
+import io.github.kjmorse2.mconeworld.tool.core.operation.OperationRunner;
+import io.github.kjmorse2.mconeworld.tool.core.operation.OperationWork;
 import io.github.kjmorse2.mconeworld.tool.core.session.ActionAvailability;
 import io.github.kjmorse2.mconeworld.tool.core.session.SessionAction;
 import io.github.kjmorse2.mconeworld.tool.core.session.SessionStatus;
@@ -113,24 +112,17 @@ public final class SidecarInitializer {
   private static final ProvenanceEvidence IMPORTED =
       new ProvenanceEvidence(EvidenceSource.WORLD_IMPORT, Confidence.HIGH);
 
-  /** Test seam: called at named points, to simulate a crash there. */
-  @FunctionalInterface
-  interface Hook {
-    Hook NONE = point -> {};
-
-    void at(String point) throws IOException;
-  }
-
   private final Clock clock;
   private final ProgressListener progress;
-  private final Hook hook;
+  private final OperationRunner.Hook hook;
   private final int batchSize;
 
   public SidecarInitializer(Clock clock, ProgressListener progress) {
-    this(clock, progress, Hook.NONE, BATCH);
+    this(clock, progress, OperationRunner.Hook.NONE, BATCH);
   }
 
-  SidecarInitializer(Clock clock, ProgressListener progress, Hook hook, int batchSize) {
+  SidecarInitializer(
+      Clock clock, ProgressListener progress, OperationRunner.Hook hook, int batchSize) {
     this.clock = Objects.requireNonNull(clock, "clock");
     this.progress = Objects.requireNonNull(progress, "progress");
     this.hook = Objects.requireNonNull(hook, "hook");
@@ -292,85 +284,45 @@ public final class SidecarInitializer {
   private InitResult run(SidecarWriter writer, OperationJournal journal, WorldInspection world)
       throws IOException {
     OperationPlan plan = journal.progress().plan();
-    Checksum digest = journal.progress().planDigest();
-    if (state(journal) == OperationState.PLANNED) {
-      append(journal, new JournalEvent.BackupConfirmed(null));
-      hook.at("backup-confirmed");
-    }
-    if (state(journal) == OperationState.BACKED_UP) {
-      PreconditionSnapshot observed = observe(writer.store(), world);
-      ValidationResult differences = plan.preconditions().differences(observed);
-      if (!differences.isValid()) {
-        append(
+    WorldInventory[] checked = {null};
+    new OperationRunner(hook)
+        .run(
             journal,
-            new JournalEvent.Cancelled(
-                reason(
-                    InitIssueCodes.WORLD_CHANGED, "The world or sidecar changed since planning")));
-        throw new ToolException(
+            new OperationWork() {
+              @Override
+              public @Nullable BackupReference confirmedBackup() {
+                return null; // the plan requires none: nothing in the world is written
+              }
+
+              @Override
+              public PreconditionSnapshot observe() throws IOException {
+                return SidecarInitializer.this.observe(writer.store(), world);
+              }
+
+              @Override
+              public void perform(int step) throws IOException {
+                SidecarInitializer.this.perform(step, plan, writer, world);
+              }
+
+              @Override
+              public @Nullable String check(int check) throws IOException {
+                Checked result = SidecarInitializer.this.check(check, plan, writer.store(), world);
+                if (result.inventory() != null) {
+                  checked[0] = result.inventory();
+                }
+                return result.failure();
+              }
+
+              @Override
+              public boolean isTerminal(IssueCode code) {
+                return code.equals(InitIssueCodes.WORLD_CHANGED)
+                    || code.equals(InitIssueCodes.SIDECAR_CONFLICT);
+              }
+            },
             InitIssueCodes.WORLD_CHANGED,
-            "The world or sidecar changed since planning; plan again",
-            differences,
-            null);
-      }
-      append(journal, new JournalEvent.ApplyStarted(digest, observed));
-      hook.at("apply-started");
-    }
-    if (state(journal) == OperationState.APPLYING) {
-      for (int step = journal.progress().stepsCompleted(); step < plan.steps().size(); step++) {
-        OperationProgress p = journal.progress();
-        Integer inProgress = p.stepInProgress();
-        int attempt = inProgress != null && inProgress == step ? p.stepAttempts() + 1 : 1;
-        append(journal, new JournalEvent.StepStarted(step, attempt));
-        hook.at("step-" + step + "-started");
-        try {
-          perform(step, plan, writer, world);
-        } catch (ToolException e) {
-          if (e.code().equals(InitIssueCodes.WORLD_CHANGED)
-              || e.code().equals(InitIssueCodes.SIDECAR_CONFLICT)) {
-            append(
-                journal,
-                new JournalEvent.OperationFailed(
-                    reason(e.code(), String.valueOf(e.getMessage())), step));
-          }
-          throw e;
-        }
-        append(journal, new JournalEvent.StepCompleted(step));
-        hook.at("step-" + step + "-completed");
-      }
-      append(journal, new JournalEvent.ValidationStarted());
-      hook.at("validation-started");
-    }
-    WorldInventory inventory = null;
-    if (state(journal) == OperationState.VALIDATING) {
-      for (int check = journal.progress().checksPassed();
-          check < plan.validations().size();
-          check++) {
-        Checked result = check(check, plan, writer.store(), world);
-        if (result.inventory != null) {
-          inventory = result.inventory;
-        }
-        if (result.failure != null) {
-          append(
-              journal,
-              new JournalEvent.OperationFailed(
-                  reason(InitIssueCodes.VALIDATION_FAILED, result.failure), null));
-          throw new ToolException(InitIssueCodes.VALIDATION_FAILED, result.failure);
-        }
-        append(journal, new JournalEvent.CheckPassed(check));
-        hook.at("check-" + check + "-passed");
-      }
-      append(journal, new JournalEvent.OperationCompleted());
-    }
-    if (state(journal) != OperationState.COMPLETED) {
-      throw new ToolException(
-          InitIssueCodes.NOT_RESUMABLE,
-          "Operation "
-              + plan.id()
-              + " is "
-              + state(journal)
-              + "; "
-              + journal.progress().recommend().explanation());
-    }
+            InitIssueCodes.VALIDATION_FAILED,
+            InitIssueCodes.NOT_RESUMABLE);
+    WorldInventory inventory = checked[0];
     if (inventory == null) {
       inventory = InventoryScanner.scan(world, InventoryScanner.RegionSink.NONE, progress);
     }
@@ -464,32 +416,23 @@ public final class SidecarInitializer {
       throws IOException {
     return switch (plan.validations().get(check).check().value()) {
       case "mconeworld:index_matches_world" -> {
-        WorldInventory inventory =
-            InventoryScanner.scan(world, InventoryScanner.RegionSink.NONE, progress);
-        if (!inventory.digest().equals(plan.preconditions().checksums().get(INVENTORY))) {
-          yield new Checked("The world changed after the import", inventory);
+        WorldChunks chunks = WorldChunks.collect(world, progress);
+        if (!chunks.inventory().digest().equals(plan.preconditions().checksums().get(INVENTORY))) {
+          yield new Checked("The world changed after the import", chunks.inventory());
         }
+        IndexComparison.Counter counter = new IndexComparison.Counter();
         try (ChunkIndexSnapshot reader = ChunkIndexStore.of(store).openReader()) {
-          for (DimensionCounts counts : inventory.dimensions()) {
-            long indexed = reader.count(ChunkQuery.all(counts.dimension()));
-            if (indexed != counts.regionChunks()) {
-              yield new Checked(
-                  counts.dimension()
-                      + ": the index holds "
-                      + indexed
-                      + " chunks, the world "
-                      + counts.regionChunks(),
-                  inventory);
-            }
-          }
-          for (DimensionKey dimension : reader.dimensions()) {
-            if (inventory.dimension(dimension).isEmpty()) {
-              yield new Checked(
-                  "The index holds chunks of " + dimension + ", which the world lacks", inventory);
-            }
-          }
+          IndexComparison.compare(chunks, reader, counter);
         }
-        yield new Checked(null, inventory);
+        yield new Checked(
+            counter.same()
+                ? null
+                : "The index differs from the world: "
+                    + counter.added()
+                    + " chunks missing, "
+                    + counter.removed()
+                    + " extra",
+            chunks.inventory());
       }
       case "mconeworld:index_verifies" -> {
         ValidationResult result = ChunkIndexStore.of(store).verify();
@@ -567,28 +510,7 @@ public final class SidecarInitializer {
         : "unknown";
   }
 
-  private static OperationState state(OperationJournal journal) {
-    return journal.progress().state();
-  }
-
-  private void append(OperationJournal journal, JournalEvent event) throws IOException {
-    journal.append(journal.progress().nextSequence(), event);
-  }
-
-  private static FailureReason reason(IssueCode code, String message) {
-    return new FailureReason(code, text(message));
-  }
-
-  /** {@code message} made acceptable as an {@link OperationText}: one bounded, clean line. */
   static OperationText text(String message) {
-    String clean = message.replaceAll("\\p{Cntrl}", " ").strip();
-    if (clean.isEmpty()) {
-      clean = "-";
-    }
-    if (clean.codePointCount(0, clean.length()) > OperationText.MAX_CODE_POINTS) {
-      clean =
-          clean.substring(0, clean.offsetByCodePoints(0, OperationText.MAX_CODE_POINTS - 1)) + "…";
-    }
-    return OperationText.of(clean);
+    return OperationRunner.text(message);
   }
 }

@@ -23,7 +23,7 @@ It also checks that the sidecar belongs to this world (manifest 1.1's seed bindi
 
 T4, shared formats. Manifest 1.1 (world binding, pending activation, archived dimensions) and the `mconeworld-backup` 1.0 format (`docs/formats/backup-v1.md`) are in `shared:sidecar`.
 
-T5, initialization (`tool.core.init.SidecarInitializer`, operation `mconeworld:sidecar_init`). The app still opens an empty main window.
+T5, initialization (`tool.core.init.SidecarInitializer`, operation `mconeworld:sidecar_init`). T6, reconcile (`tool.core.reconcile.Reconciler`, operation `mconeworld:reconcile`). Both run through the shared journal runner (`tool.core.operation.OperationRunner`). The app still opens an empty main window.
 
 ## Initializing a sidecar (T5)
 
@@ -55,3 +55,30 @@ What it does: creates the sidecar for an existing world. The world is only read.
 ```
 
 **Chunk trimming** (deleting unwanted chunks) is not part of the Tool. Use MCA Selector, kept unmodified in [`offline-tool/`](../offline-tool/), with the server stopped. Then open the world in the Tool and run **Reconcile**.
+
+## Reconciling after trimming (T6)
+
+Run this after trimming the world with MCA Selector (server stopped), or whenever the world changed without the plugin.
+
+1. **Preview** (`preview(locations, acknowledgeProtectedRemovals)`). Compares every region chunk of the world with the chunk index, and shows per dimension:
+   - chunks gained
+   - records of chunks lost, grouped by the season that first saw them
+   - which of the lost chunks were protected
+
+   It writes nothing.
+2. **Protected chunks.** If a protected chunk is gone (explicitly protected, or inside a protected region), the preview refuses and lists them, until the user acknowledges their removal.
+3. **Apply.** In order:
+   1. Write every record about to be removed, in full, to `reports/reconcile-<operation>.jsonl` (`docs/formats/reconcile-report-v1.md`). If the sidecar had no world binding, bind it now.
+   2. Record gained chunks: as first seen in the active season, with low confidence because the evidence is an offline scan; or as legacy if no season is active. Then remove the lost chunks' records.
+4. **Validate.** Three checks:
+   - the index now matches the world exactly
+   - the index verifies
+   - the report holds every planned removal
+5. **Afterwards.** A second preview reports *nothing to do*, and apply refuses.
+
+**Prerequisites.** The server is stopped. The sidecar is usable and belongs to this world. No other operation is unfinished.
+
+**Backup.** None is needed: the world is only read, and removed history is in the report.
+
+**If interrupted.** Every step can be retried; **Resume** continues from the journal and reproduces the same report bytes. If the world changes while planning or applying, the operation stops and nothing is guessed.
+

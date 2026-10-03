@@ -53,6 +53,13 @@ class LocalWorldInitTest {
       var status = ToolSession.inspect(locations, Clock.systemUTC());
       status.findings().issues().forEach(i -> System.out.println("  finding: " + i));
       assertThat(status.findings().isValid()).isTrue();
+      var reconcile =
+          new io.github.kjmorse2.mconeworld.tool.core.reconcile.Reconciler(
+                  Clock.systemUTC(), ProgressListener.NONE)
+              .preview(locations, false);
+      System.out.println(
+          "  reconcile right after: nothing to do = " + reconcile.diff().nothingToDo());
+      assertThat(reconcile.diff().nothingToDo()).isTrue();
       assertThat(lastModified(world)).as("the world was not modified").isEqualTo(before);
     }
   }
