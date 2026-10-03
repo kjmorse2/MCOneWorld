@@ -188,7 +188,9 @@ public final class ToolSession {
   /** The operation types this Tool can continue after an interruption. */
   public static final List<OperationType> RESUMABLE_TYPES =
       List.of(
-          OperationType.of("mconeworld:sidecar_init"), OperationType.of("mconeworld:reconcile"));
+          OperationType.of("mconeworld:sidecar_init"),
+          OperationType.of("mconeworld:reconcile"),
+          OperationType.of("mconeworld:backup"));
 
   /**
    * Whether this Tool can continue {@code op}: an intact journal of a type it knows, not finished,

@@ -23,7 +23,7 @@ It also checks that the sidecar belongs to this world (manifest 1.1's seed bindi
 
 T4, shared formats. Manifest 1.1 (world binding, pending activation, archived dimensions) and the `mconeworld-backup` 1.0 format (`docs/formats/backup-v1.md`) are in `shared:sidecar`.
 
-T5, initialization (`tool.core.init.SidecarInitializer`, operation `mconeworld:sidecar_init`). T6, reconcile (`tool.core.reconcile.Reconciler`, operation `mconeworld:reconcile`). Both run through the shared journal runner (`tool.core.operation.OperationRunner`). The app still opens an empty main window.
+T5, initialization (`tool.core.init.SidecarInitializer`, operation `mconeworld:sidecar_init`). T6, reconcile (`tool.core.reconcile.Reconciler`, operation `mconeworld:reconcile`). T7, backups (`tool.core.backup.BackupService`, operation `mconeworld:backup`). Both run through the shared journal runner (`tool.core.operation.OperationRunner`). The app still opens an empty main window.
 
 ## Initializing a sidecar (T5)
 
@@ -81,4 +81,28 @@ Run this after trimming the world with MCA Selector (server stopped), or wheneve
 **Backup.** None is needed: the world is only read, and removed history is in the report.
 
 **If interrupted.** Every step can be retried; **Resume** continues from the journal and reproduces the same report bytes. If the world changes while planning or applying, the operation stops and nothing is guessed.
+
+## Backups (T7)
+
+1. **Preview** (`preview`). Lists and sizes everything to copy:
+   - every regular file of the world, except `session.lock`
+   - every file of the sidecar, except `backups/`, the lock files, the staging area, and the running backup's own journal
+
+   It refuses a symbolic link, a file name a backup cannot hold, or too little free space on the sidecar's disk (the copy plus 5 % plus 64 MiB). It writes nothing.
+2. **Apply** (`apply`). Copies everything into `backups/<id>/` (`docs/formats/backup-v1.md`), hashing each file on the way, then:
+   1. checks that the world's paths, sizes, and modification times did not change during the copy
+   2. re-reads every copied byte against the hashes
+   3. records the backup in the manifest, the commit point
+
+   Only a verified backup is ever recorded.
+3. **Validate.** The recorded backup verifies against its `backup.json`, and the world did not change.
+4. **Verify later** (`BackupService.verify`). Re-reads a recorded backup at any time and reports partial, changed, missing, and unexpected files.
+
+**Prerequisites.** The server is stopped, the sidecar is usable, and there is enough free space.
+
+**If interrupted or cancelled** (interrupt the worker thread). **Resume** removes this backup's own partial copy and copies again; a partial copy is never recorded.
+
+**Restore.** Restore is manual for now: `RestoreInstructions.forFullBackup` gives the exact steps. They move the current world and sidecar aside (never delete them), copy the backup's `world/` and `sidecar/` back, and keep every backup.
+
+**Real worlds.** On the long-lived world, 2,288 files (1.1 GB) were copied and verified in 3.3 s on a RAM disk (`localWorldTest`). Expect disk speed on a real disk.
 

@@ -21,8 +21,8 @@ import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Initializes a sidecar, in a temporary directory, for each real world kept outside version
- * control, and checks that the world was not modified. Excluded from {@code check}; run by {@code
- * localWorldTest}.
+ * control, reconciles it, backs it up, and checks that the world was not modified. Excluded from
+ * {@code check}; run by {@code localWorldTest}.
  */
 @Tag("local-worlds")
 class LocalWorldInitTest {
@@ -60,6 +60,22 @@ class LocalWorldInitTest {
       System.out.println(
           "  reconcile right after: nothing to do = " + reconcile.diff().nothingToDo());
       assertThat(reconcile.diff().nothingToDo()).isTrue();
+      long backupStart = System.nanoTime();
+      var backups =
+          new io.github.kjmorse2.mconeworld.tool.core.backup.BackupService(
+              Clock.systemUTC(), ProgressListener.NONE);
+      var preview = backups.preview(locations);
+      var record = backups.apply(preview);
+      System.out.printf(
+          "  backup: %d world + %d sidecar files, %d bytes, copied and verified in %d ms; re-verify: %s%n",
+          preview.worldFiles(),
+          preview.sidecarFiles(),
+          preview.totalBytes(),
+          (System.nanoTime() - backupStart) / 1_000_000,
+          io.github.kjmorse2.mconeworld.tool.core.backup.BackupService.verify(
+                  locations, record.id())
+              .verified());
+      assertThat(ToolSession.inspect(locations, Clock.systemUTC()).findings().isValid()).isTrue();
       assertThat(lastModified(world)).as("the world was not modified").isEqualTo(before);
     }
   }
