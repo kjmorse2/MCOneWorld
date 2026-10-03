@@ -33,7 +33,7 @@ class ManifestGoldenTest {
     Properties meta = new Properties();
     meta.load(
         new java.io.ByteArrayInputStream(
-            ManifestFixtures.resource(ManifestFixtures.GOLDEN_FULL_V1 + ".meta")));
+            ManifestFixtures.resource(ManifestFixtures.GOLDEN_FULL + ".meta")));
     assertThat(meta.getProperty("schemaVersion")).isEqualTo(ManifestCodec.CURRENT.toString());
     assertThat(meta.getProperty("format")).isEqualTo(ManifestCodec.FORMAT);
     String sha = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(encoded));

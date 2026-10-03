@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 package io.github.kjmorse2.mconeworld.sidecar.manifest;
 
+import io.github.kjmorse2.mconeworld.domain.archive.WorldBinding;
 import io.github.kjmorse2.mconeworld.domain.validation.IssueLocation;
 import io.github.kjmorse2.mconeworld.domain.validation.ValidationIssue;
 import io.github.kjmorse2.mconeworld.domain.validation.ValidationResult;
@@ -36,7 +37,7 @@ public final class ManifestCodec {
   public static final String FORMAT = "mconeworld-manifest";
 
   /** The schema version this codec implements. It is not the application release version. */
-  public static final SchemaVersion CURRENT = new SchemaVersion(1, 0);
+  public static final SchemaVersion CURRENT = new SchemaVersion(1, 1);
 
   private final ManifestLimits limits;
   private final JsonReader reader;
@@ -140,6 +141,11 @@ public final class ManifestCodec {
     d.state().backups().forEach(b -> all.add(b.createdAt()));
     d.state().playerArchives().forEach(a -> all.add(a.archivedAt()));
     d.features().values().forEach(f -> all.add(f.adoptedAt()));
+    WorldBinding world = d.state().worldBinding();
+    if (world != null) {
+      all.add(world.boundAt());
+    }
+    d.state().archivedDimensions().forEach(a -> all.add(a.archivedAt()));
     return all;
   }
 }

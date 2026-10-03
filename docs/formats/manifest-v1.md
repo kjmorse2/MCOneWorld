@@ -1,9 +1,10 @@
-# Sidecar manifest, schema 1.0 (normative)
+# Sidecar manifest, schemas 1.0 and 1.1 (normative)
 
 - File: `mconeworld-data/manifest.json`
 - Implementation: `shared:sidecar`, package `io.github.kjmorse2.mconeworld.sidecar.manifest` (`ManifestCodec`)
-- Decisions: ADR 0003 (JSON stack and canonical form)
-- Example: [`examples/manifest-v1-example.json`](examples/manifest-v1-example.json). It is byte-identical to the golden fixture `shared/test-fixtures/src/main/resources/io/github/kjmorse2/mconeworld/fixtures/manifest/v1/full.json` (SHA-256 `f0df84d6387018b9d62e9bb2cd5d78fef3aad200025ea73c9de42d452b4aa1a8`), and a test enforces that.
+- Decisions: ADR 0003 (JSON stack and canonical form); 1.1 additions: ADR 0010 (archived dimensions), ADR 0011 (pending activation), Tool T4 (world binding)
+- Example: [`examples/manifest-v1-example.json`](examples/manifest-v1-example.json), schema 1.1. It is byte-identical to the golden fixture `shared/test-fixtures/src/main/resources/io/github/kjmorse2/mconeworld/fixtures/manifest/v1/full-1.1.json` (SHA-256 `246e7d739e5fa05b067e95fc691e3fd7e22c806a0643f3ea3d1cb38d9442376a`), and a test enforces that.
+- The schema 1.0 golden, `…/manifest/v1/full.json` (SHA-256 `f0df84d6387018b9d62e9bb2cd5d78fef3aad200025ea73c9de42d452b4aa1a8`), is frozen as a compatibility input: every 1.x reader must decode it.
 
 The key words MUST, MUST NOT, and MAY are used as in RFC 2119.
 
@@ -97,6 +98,33 @@ The root object has these members. Every member is required, except `extensions`
 | `features` | object: key → feature | Keys sorted canonically |
 | `extensions` | object | Optional. See §5. |
 
+### 3.1 Members added in 1.1
+
+These three root members are **required in a document declaring 1.1 or later** and **unknown in a 1.0 document**, so a strict 1.0 document that contains one is rejected (`manifest.schema.unknown_member`). Reading a 1.0 document gives each its 1.0 meaning: `world: null`, `pendingActivation: null`, `archivedDimensions: []`. A 1.1 writer always writes all three.
+
+| Member | Type | Meaning |
+|---|---|---|
+| `world` | worldBinding or null | Which world this archive belongs to. `null`: never recorded. |
+| `pendingActivation` | uuid or null | The active season whose offline activation awaits application by the server (ADR 0011). `null`: nothing pending. |
+| `archivedDimensions` | array of archivedDimension | Dimensions archived out of the world, so Minecraft generates them afresh (ADR 0010). Append order. |
+
+**worldBinding**
+
+- `seedSha256`: checksum. SHA-256 of the world seed as 8 big-endian bytes. The seed is the world's stable identity; only its hash is stored, so a shared sidecar does not reveal the seed.
+- `levelName`: string or null. The level name at binding time: 1–256 code points, the display-name text rules (no leading or trailing whitespace, no controls, no bidirectional overrides). Display only; never used for matching.
+- `dataVersion`: integer ≥ 0. The world's data version at binding time, for diagnostics.
+- `boundAt`: timestamp
+- `extensions`: optional
+
+**archivedDimension**
+
+- `dimension`: dimension
+- `season`: uuid or null. The season that was active when the dimension was archived, the one that ended.
+- `operation`: uuid. The season transition that archived it.
+- `backup`: uuid. The backup that holds the archived files.
+- `archivedAt`: timestamp
+- `extensions`: optional
+
 **season**
 
 - `id`: uuid
@@ -183,6 +211,10 @@ A reader reports all of the following. A document that violates any error rule i
 | Every backup has a location, and every location has a backup | `manifest.reference.backup_path_missing` / `_unknown` | REFERENTIAL |
 | No reference points at `manifest.json`; backups lie under `backups/` | `manifest.schema.invalid_value` | SCHEMA |
 | Domain value rules (dimension grammar, name, checksum, coordinates within range, …) | `domain.*`, the code of `DomainErrorCode` | DOMAIN |
+| (1.1) `pendingActivation`, if non-null, names an existing season | `archive.reference.unknown_season` | REFERENTIAL |
+| (1.1) `archivedDimensions[].season`, if non-null, names an existing season | `archive.reference.unknown_season` | REFERENTIAL |
+| (1.1) `archivedDimensions[].backup` names an existing backup | `archive.reference.unknown_backup` | REFERENTIAL |
+| (1.1) `pendingActivation` names a season other than `activeSeason`: it is **stale** and ignored. Only a writer that did not understand it can cause this. | `archive.pending_activation.stale` | **WARNING** |
 | Origin not aligned (Overworld 128 blocks, other dimensions 16) | `season.origin.misaligned` | **WARNING** |
 | Overworld and Nether origins not exactly paired (÷8) | `season.origin.nether_unpaired` | **WARNING** |
 
@@ -196,8 +228,9 @@ Warnings never block decoding. They are returned in `DecodedManifest.warnings`.
 |---|---|
 | `schemaVersion` major ≠ 1 (e.g. `"0.9"`, `"2.0"`) | **Rejected**: `manifest.version.unsupported`. Fail closed: nothing else is interpreted or reported. |
 | `schemaVersion` malformed (`"1"`, `"01.0"`, `"1.0.0"`) | Rejected: `manifest.schema.invalid_value` |
-| `"1.0"` | Strict. Any member not defined above is rejected (`manifest.schema.unknown_member`). This catches typos. |
-| `"1.N"`, N > 0 | Accepted, with a WARNING `manifest.version.newer_minor`. Every member defined above is fully validated. Unknown members in any object are **preserved** at their location and written back unchanged. |
+| `"1.0"` | Strict. Any member not defined for 1.0 is rejected (`manifest.schema.unknown_member`), the §3.1 members included. This catches typos. |
+| `"1.1"` | Strict, with the §3.1 members required. |
+| `"1.N"`, N > 1 | Accepted, with a WARNING `manifest.version.newer_minor`. Every member defined above is fully validated. Unknown members in any object are **preserved** at their location and written back unchanged. |
 | An `extensions` member on the root or on a record (season, region, marker, backup, player archive, file, feature) | Accepted in every 1.x version. It MUST be an object whose keys are namespaced keys. It is preserved verbatim and never interpreted. It is not allowed inside plain value objects such as positions, origins, and areas. |
 | A new value for an enum member (e.g. a new `status`) | Rejected (`manifest.schema.invalid_value`). Adding enum constants therefore **requires a major version**. |
 
@@ -205,9 +238,11 @@ Warnings never block decoding. They are returned in `DecodedManifest.warnings`.
 
 A 1.x minor revision MAY only add optional members whose absence has the 1.0 meaning, and whose values stay valid when other 1.0 members are changed by an older writer. Anything else (new required members, new enum constants, changed meaning) is a major revision with an explicit migration (Prompt 06).
 
+**Actors read newer minors read-only (since 1.1).** A component that changes season state (the Tool's workflows, the plugin's activation and resets) MUST NOT write a manifest whose minor version is newer than its own reader: a member it does not understand may change what it must do, as `pendingActivation` does. It may still read and display it. This keeps the §5.2 rule safe for members that carry obligations.
+
 ### 5.3 Read-modify-write
 
-- A reader that decodes a 1.N file and writes it back keeps `schemaVersion` at `max("1.0", "1.N")`. It keeps every preserved member, and every `extensions` object, of each record that still exists.
+- A reader that decodes a 1.N file and writes it back writes `schemaVersion` `max(its own version, "1.N")`. A 1.1 writer therefore upgrades a 1.0 document to 1.1, writing the §3.1 members with their 1.0 meaning. It keeps every preserved member, and every `extensions` object, of each record that still exists.
 - A record that is removed takes its preserved members with it.
 - Preserved members inside `physicalContainers` are keyed by position in the array.
 - Known members always take precedence over preserved ones.
@@ -234,3 +269,4 @@ Syntax and limit failures stop decoding at the first error. All later stages col
 | Version | Change |
 |---|---|
 | 1.0 | Initial schema (Prompt 04) |
+| 1.1 | Root members `world`, `pendingActivation`, `archivedDimensions` (§3.1) and their rules (§4); actors read newer minors read-only (§5.1). No migration: 1.1 readers read 1.0 directly (ADR 0005). Tool milestone T4. |

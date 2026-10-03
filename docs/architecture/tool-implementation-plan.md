@@ -33,7 +33,7 @@ What they deliberately lack is everything that touches Minecraft world files: re
 | MCA Selector relationship (root §22) | **Vendor plus new app.** New tool modules in the root build, under its quality gates. Only the needed MCA Selector code is copied into an attributed module. `offline-tool/` stays untouched; it remains the user's trimming tool and the upstream reference. |
 | Minecraft versions | Read-only inspection for any version (region headers are version-agnostic). World mutation, which is only the End archive (the dragon fight is saved inside the End directory in 26.1+), runs only on the pinned **26.2 (data version 4903)** and fails closed otherwise. |
 | v1 scope | Sidecar setup with legacy import; reconcile after external trimming; backup creation and verification; seasons (plan, create, offline activation); End archive and regeneration; a map for planning. **Out of scope:** restore (except operation rollback), chunk deletion (lowest priority), strongholds, season-local coordinates (the tool shows absolute coordinates only). |
-| Activation | **The tool activates offline.** The sidecar records "activation pending application" so the plugin applies spawn and player resets at the next start. This needs a shared manifest format change. |
+| Activation | **The tool activates offline.** The sidecar records the activation as pending application (`pendingActivation`), so the plugin applies spawn and player resets at the next start. This needs a shared manifest format change (1.1). |
 | Removed chunks found by reconcile | Removed from the index, but every removed record is first written to a report under `reports/`. A removed protected chunk blocks until acknowledged. |
 | Backups | Live in the sidecar under `backups/<id>/` (accepted manifest format), with checksums, verified after writing. |
 | End strategy (root §22; amends §3's "preserve the End") | At each season creation, archive the whole End dimension directory (move its files into the backup area). In 26.1+ that includes the dragon fight (`…/the_end/data/minecraft/ender_dragon_fight.dat`), so Minecraft generates a fresh End and fight. Pinned version only, server stopped, full safe protocol. Root AGENTS.md §3 is updated to reference the ADR. |
@@ -129,11 +129,11 @@ Each milestone is one or more commits. Its tests must pass in `./gradlew check`;
 
 **T4: Shared format additions** (in `shared/`, with the full Prompt-04/06 discipline)
 
-- Manifest **1.1** (additive minor version):
-  - a world binding (level name, seed hash, data version at import)
-  - per-season activation state `pendingApplication`
-  - archived-dimension records
-- Migration 1.0 → 1.1, golden fixtures, the format spec, and `shared-contracts.json`.
+- Manifest **1.1** (additive minor version; `manifest-v1.md` §3.1):
+  - `world`: a world binding (seed hash, level name, data version at binding)
+  - `pendingActivation`: the active season awaiting application by the server
+  - `archivedDimensions`: archived-dimension records
+- **No migration.** A 1.1 reader reads 1.0 directly (ADR 0005), so the plan's earlier "1.0 → 1.1 migration" was dropped. Also: a new golden fixture, the format spec, and `shared-contracts.json`.
 - Backup format `mconeworld-backup` 1.0: a backup manifest listing relative paths, sizes, and SHA-256s, with kind `full` or `dimension-archive`. A `BackupFileWriter` reserved-area writer, modelled on `IndexFileWriter`, plus a verification routine.
 - **Tests:** codec, golden, migration, and fuzz tests, as in the existing suites.
 
@@ -187,7 +187,7 @@ Each milestone is one or more commits. Its tests must pass in `./gradlew check`;
   1. Copy the End dimension's files into `backups/<id>/end/`, then verify. This is a copy-verify-delete, so it is safe across filesystems.
   2. Delete the originals. On Paper's separate world folder, only the dimension's data directory goes; folder-level files such as its `level.dat` stay.
   3. Remove the End's provenance from the index, with a report.
-  4. In one manifest transaction: `appendSeason`, `archiveActiveSeason`, `activate`, `pendingApplication = true`, and the archived-dimension record. This transaction is the commit point.
+  4. In one manifest transaction: `appendSeason`, `archiveActiveSeason`, `activateForApplication`, and the archived-dimension record. This transaction is the commit point.
 - **Validate:**
   - the End is absent
   - every file outside the End dimension directory, `level.dat` included, is byte-identical
@@ -267,7 +267,7 @@ Each milestone is one or more commits. Its tests must pass in `./gradlew check`;
 
 ## Risks and dependencies
 
-- **Plugin coordination.** Activation and the End reset change what the plugin must do at startup: apply the spawn and player resets when `pendingApplication` is set, and expect a fresh End. Both are recorded in ADRs 0010 and 0011 for the Paper project. The plugin itself is out of scope here.
+- **Plugin coordination.** Activation and the End reset change what the plugin must do at startup: apply the spawn and player resets when `pendingActivation` is set, and expect a fresh End. Both are recorded in ADRs 0010 and 0011 for the Paper project. The plugin itself is out of scope here.
 - **Dragon fight and Paper layout.** The owner reports that 26.1+ keeps the dragon fight inside the End dimension directory, and that Paper keeps each dimension in its own world folder. Both are confirmed in T2 (layout) and before T9 (fight), never guessed. A version that keeps the fight in `level.dat` stays inspect-only.
 - **JavaFX's per-platform artifacts** must be locked and verified for every OS in T1, because the repository rules allow mavenCentral only.
 - **Disk space.** A full-world backup per season can be large. T7 checks free space and shows the expected size in the preview.

@@ -27,7 +27,7 @@ class ManifestCompatibilityTest {
   private static byte[] newerMinorWithUnknownMembers() {
     String text =
         new String(golden(), StandardCharsets.UTF_8)
-            .replace("\"schemaVersion\": \"1.0\"", "\"schemaVersion\": \"1.7\"")
+            .replace("\"schemaVersion\": \"1.1\"", "\"schemaVersion\": \"1.7\"")
             .replace(
                 "\"revision\": 42,",
                 "\"revision\": 42,\n  \"retention\": {\"days\": 30, \"policy\": [\"keep\"]},")

@@ -148,7 +148,7 @@ class ManifestRejectionTest {
   void unsupportedMajorVersionsFailClosed(String version) {
     ManifestException e =
         assertRejected(
-            goldenWith("\"schemaVersion\": \"1.0\"", "\"schemaVersion\": \"" + version + "\""),
+            goldenWith("\"schemaVersion\": \"1.1\"", "\"schemaVersion\": \"" + version + "\""),
             ManifestIssueCodes.UNSUPPORTED_VERSION,
             UNSUPPORTED_VERSION);
     // Fail closed: nothing else is interpreted, so no schema noise for a format we do not know.
@@ -159,7 +159,7 @@ class ManifestRejectionTest {
   @ValueSource(strings = {"1", "1.0.0", "01.0", "1.00", "v1.0", ""})
   void malformedVersionTextIsASchemaError(String version) {
     assertRejected(
-        goldenWith("\"schemaVersion\": \"1.0\"", "\"schemaVersion\": \"" + version + "\""),
+        goldenWith("\"schemaVersion\": \"1.1\"", "\"schemaVersion\": \"" + version + "\""),
         ManifestIssueCodes.INVALID_VALUE,
         SCHEMA);
   }

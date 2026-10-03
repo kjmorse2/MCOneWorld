@@ -9,7 +9,7 @@
     "productionDependencies": ["org.jspecify:jspecify:1.0.1", "tools.jackson.core:jackson-core:3.2.3"]
   },
   "formats": [
-    {"name": "mconeworld-manifest", "version": "1.0", "spec": "docs/formats/manifest-v1.md"},
+    {"name": "mconeworld-manifest", "version": "1.1", "spec": "docs/formats/manifest-v1.md"},
     {"name": "mconeworld-writer-lock", "version": "1", "spec": "docs/formats/sidecar-storage-v1.md"},
     {"name": "mconeworld-staging-transaction", "version": "1", "spec": "docs/formats/sidecar-storage-v1.md"},
     {"name": "mconeworld-migration-report", "version": "1", "spec": "docs/decisions/0005-manifest-migration-guarantees.md"},

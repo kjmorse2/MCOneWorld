@@ -1,6 +1,15 @@
 {
   "activeSeason": "5ea50000-0000-4000-8000-000000000002",
   "archiveId": "a4c10000-0000-4000-8000-000000000001",
+  "archivedDimensions": [
+    {
+      "archivedAt": "2026-01-01T00:40:50Z",
+      "backup": "bacc0000-0000-4000-8000-000000000001",
+      "dimension": "minecraft:the_end",
+      "operation": "0be40000-0000-4000-8000-000000000001",
+      "season": "5ea50000-0000-4000-8000-000000000001"
+    }
+  ],
   "backups": [
     {
       "activeSeason": "5ea50000-0000-4000-8000-000000000001",
@@ -43,6 +52,7 @@
     }
   ],
   "format": "mconeworld-manifest",
+  "pendingActivation": "5ea50000-0000-4000-8000-000000000002",
   "playerArchives": [
     {
       "archivedAt": "2026-01-01T00:41:40Z",
@@ -110,7 +120,7 @@
     }
   ],
   "revision": 42,
-  "schemaVersion": "1.0",
+  "schemaVersion": "1.1",
   "seasons": [
     {
       "createdAt": "2026-01-01T00:16:40Z",
@@ -173,5 +183,11 @@
       },
       "status": "PLANNED"
     }
-  ]
+  ],
+  "world": {
+    "boundAt": "2026-01-01T00:16:40Z",
+    "dataVersion": 4903,
+    "levelName": "Golden World",
+    "seedSha256": "sha256:d2605e5867d788fd7c001d55a97d49d4a9520c511b97abd8af591a09bbf2bd9d"
+  }
 }

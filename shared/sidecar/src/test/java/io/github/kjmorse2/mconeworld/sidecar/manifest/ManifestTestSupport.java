@@ -16,7 +16,7 @@ final class ManifestTestSupport {
   private ManifestTestSupport() {}
 
   static byte[] golden() {
-    return ManifestFixtures.resource(ManifestFixtures.GOLDEN_FULL_V1).clone();
+    return ManifestFixtures.resource(ManifestFixtures.GOLDEN_FULL).clone();
   }
 
   static String goldenText() {

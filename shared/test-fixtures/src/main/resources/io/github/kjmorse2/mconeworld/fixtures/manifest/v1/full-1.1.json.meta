@@ -1,0 +1,6 @@
+# Golden fixture metadata (shared/AGENTS.md "Golden files include format version and expected checksum").
+# Produced by ManifestCodec.encode(ManifestFixtures.fullDocument()); reviewed by hand before pinning.
+# Schema 1.1: the 1.0 golden (full.json) plus world, pendingActivation, and archivedDimensions.
+format=mconeworld-manifest
+schemaVersion=1.1
+sha256=246e7d739e5fa05b067e95fc691e3fd7e22c806a0643f3ea3d1cb38d9442376a

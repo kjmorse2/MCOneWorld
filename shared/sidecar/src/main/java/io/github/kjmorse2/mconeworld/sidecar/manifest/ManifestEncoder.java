@@ -2,9 +2,11 @@
 package io.github.kjmorse2.mconeworld.sidecar.manifest;
 
 import io.github.kjmorse2.mconeworld.domain.archive.ArchiveCategory;
+import io.github.kjmorse2.mconeworld.domain.archive.ArchivedDimension;
 import io.github.kjmorse2.mconeworld.domain.archive.BackupRecord;
 import io.github.kjmorse2.mconeworld.domain.archive.PlayerArchiveRecord;
 import io.github.kjmorse2.mconeworld.domain.archive.PortalMarker;
+import io.github.kjmorse2.mconeworld.domain.archive.WorldBinding;
 import io.github.kjmorse2.mconeworld.domain.coordinate.BlockPosition;
 import io.github.kjmorse2.mconeworld.domain.coordinate.DimensionOrigin;
 import io.github.kjmorse2.mconeworld.domain.provenance.ProtectedRegion;
@@ -81,7 +83,35 @@ final class ManifestEncoder {
               features.put(key.value(), object("features/" + key.value(), true, f));
             });
     root.put("features", new JsonObject(features));
+    // Manifest 1.1 members; this encoder always writes 1.1 or newer.
+    WorldBinding world = doc.state().worldBinding();
+    root.put("world", world == null ? JsonNull.INSTANCE : world(world));
+    root.put("pendingActivation", nullableStr(doc.state().pendingActivation()));
+    List<JsonValue> archived = new ArrayList<>();
+    for (int i = 0; i < doc.state().archivedDimensions().size(); i++) {
+      archived.add(archivedDimension(doc.state().archivedDimensions().get(i), i));
+    }
+    root.put("archivedDimensions", array(archived));
     return object("$", true, root);
+  }
+
+  private JsonValue world(WorldBinding w) {
+    Map<String, JsonValue> m = new LinkedHashMap<>();
+    m.put("seedSha256", str(w.seedSha256().toString()));
+    m.put("levelName", nullableStr(w.levelName()));
+    m.put("dataVersion", new JsonNumber(w.dataVersion()));
+    m.put("boundAt", instant(w.boundAt()));
+    return object("world", true, m);
+  }
+
+  private JsonValue archivedDimension(ArchivedDimension a, int index) {
+    Map<String, JsonValue> m = new LinkedHashMap<>();
+    m.put("dimension", str(a.dimension().toString()));
+    m.put("season", nullableStr(a.season()));
+    m.put("operation", str(a.operation().toString()));
+    m.put("backup", str(a.backup().toString()));
+    m.put("archivedAt", instant(a.archivedAt()));
+    return object("archivedDimensions/" + index, true, m);
   }
 
   private JsonValue season(SeasonRecord s) {

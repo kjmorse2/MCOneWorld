@@ -58,7 +58,7 @@ public final class MigrationPlanner {
               + target);
     }
     SchemaVersion from = SchemaProbe.versionOf(source, probeReader);
-    if (from.major() == target.major() && from.compareTo(target) >= 0) {
+    if (from.major() == target.major()) {
       throw new MigrationException(
           MigrationIssueCodes.ALREADY_CURRENT,
           "Schema "
@@ -67,7 +67,9 @@ public final class MigrationPlanner {
               + target
               + " reader; no migration is needed");
     }
-    List<ManifestMigration> path = registry.findPath(from, target);
+    // Minor versions never need a step (ADR 0005): a chain from an older major ends at the first
+    // version of the target's major, which the current reader reads directly.
+    List<ManifestMigration> path = registry.findPath(from, new SchemaVersion(target.major(), 0));
 
     List<StepReport> reports = new ArrayList<>();
     byte[] current = source.clone();

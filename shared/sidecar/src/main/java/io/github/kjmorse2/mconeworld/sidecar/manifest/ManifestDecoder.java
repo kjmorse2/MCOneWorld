@@ -15,9 +15,11 @@ import io.github.kjmorse2.mconeworld.domain.ProtectedRegionId;
 import io.github.kjmorse2.mconeworld.domain.SeasonId;
 import io.github.kjmorse2.mconeworld.domain.archive.ArchiveCategory;
 import io.github.kjmorse2.mconeworld.domain.archive.ArchiveState;
+import io.github.kjmorse2.mconeworld.domain.archive.ArchivedDimension;
 import io.github.kjmorse2.mconeworld.domain.archive.BackupRecord;
 import io.github.kjmorse2.mconeworld.domain.archive.PlayerArchiveRecord;
 import io.github.kjmorse2.mconeworld.domain.archive.PortalMarker;
+import io.github.kjmorse2.mconeworld.domain.archive.WorldBinding;
 import io.github.kjmorse2.mconeworld.domain.coordinate.BlockPosition;
 import io.github.kjmorse2.mconeworld.domain.coordinate.ChunkRectangle;
 import io.github.kjmorse2.mconeworld.domain.coordinate.DimensionOrigin;
@@ -145,17 +147,36 @@ final class ManifestDecoder {
     List<PlayerArchiveRecord> archives = r.list("playerArchives", this::playerArchive);
     List<FileReference> files = r.list("files", this::file);
     SortedMap<FeatureKey, FeatureRecord> features = features(r);
+    // Manifest 1.1 members: required from 1.1 on, unknown (so rejected) in a 1.0 document.
+    WorldBinding world = null;
+    Field<SeasonId> pending = new Field<>(true, null);
+    List<ArchivedDimension> archived = List.of();
+    if (version.minor() >= 1) {
+      world = worldBinding(r);
+      pending = r.nullable("pendingActivation", SeasonId::parse);
+      archived = r.list("archivedDimensions", this::archivedDimension);
+    }
     r.finish(true);
 
     if (errors > 0
         || archiveId == null
         || createdAt == null
         || revision == null
-        || !activeSeason.ok()) {
+        || !activeSeason.ok()
+        || !pending.ok()) {
       return null;
     }
     ArchiveState state =
-        new ArchiveState(seasons, activeSeason.value(), regions, markers, backups, archives);
+        new ArchiveState(
+            seasons,
+            activeSeason.value(),
+            regions,
+            markers,
+            backups,
+            archives,
+            world,
+            pending.value(),
+            archived);
     ManifestDocument document =
         new ManifestDocument(
             version,
@@ -352,6 +373,49 @@ final class ManifestDecoder {
       return null;
     }
     return domain(o.at, () -> new FileReference(role, dimension.value(), path, checksum, size));
+  }
+
+  /** The root {@code world} member: an object, or {@code null} when the archive is not bound. */
+  private @Nullable WorldBinding worldBinding(Obj root) {
+    JsonValue value = root.member("world");
+    if (value == null || value == JsonNull.INSTANCE) {
+      return null;
+    }
+    IssueLocation at = root.at.field("world");
+    if (!(value instanceof JsonObject json)) {
+      wrongType(at, "object or null", value);
+      return null;
+    }
+    Obj o = new Obj(json, at, "world");
+    Checksum seed = o.convert("seedSha256", Checksum::parse);
+    Field<String> levelName = o.nullable("levelName", text -> text);
+    Integer dataVersion = o.intValue("dataVersion");
+    Instant boundAt = o.instant("boundAt");
+    o.finish(true);
+    if (seed == null || !levelName.ok() || dataVersion == null || boundAt == null || o.failed) {
+      return null;
+    }
+    return domain(at, () -> new WorldBinding(seed, levelName.value(), dataVersion, boundAt));
+  }
+
+  private @Nullable ArchivedDimension archivedDimension(Obj o) {
+    DimensionKey dimension = o.convert("dimension", DimensionKey::parse);
+    Field<SeasonId> season = o.nullable("season", SeasonId::parse);
+    OperationId operation = o.convert("operation", OperationId::parse);
+    BackupId backup = o.convert("backup", BackupId::parse);
+    Instant archivedAt = o.instant("archivedAt");
+    o.finish(true);
+    if (dimension == null
+        || !season.ok()
+        || operation == null
+        || backup == null
+        || archivedAt == null
+        || o.failed) {
+      return null;
+    }
+    return domain(
+        o.at,
+        () -> new ArchivedDimension(dimension, season.value(), operation, backup, archivedAt));
   }
 
   private SortedMap<FeatureKey, FeatureRecord> features(Obj root) {

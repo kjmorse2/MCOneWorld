@@ -2,6 +2,7 @@
 package io.github.kjmorse2.mconeworld.tool.core.session;
 
 import io.github.kjmorse2.mconeworld.domain.OperationId;
+import io.github.kjmorse2.mconeworld.domain.archive.WorldBinding;
 import io.github.kjmorse2.mconeworld.domain.validation.IssueLocation;
 import io.github.kjmorse2.mconeworld.domain.validation.ValidationIssue;
 import io.github.kjmorse2.mconeworld.domain.validation.ValidationResult;
@@ -10,6 +11,7 @@ import io.github.kjmorse2.mconeworld.sidecar.index.ChunkIndexStore;
 import io.github.kjmorse2.mconeworld.sidecar.manifest.DecodedManifest;
 import io.github.kjmorse2.mconeworld.sidecar.manifest.ManifestCodec;
 import io.github.kjmorse2.mconeworld.sidecar.manifest.ManifestException;
+import io.github.kjmorse2.mconeworld.sidecar.manifest.ManifestIssueCodes;
 import io.github.kjmorse2.mconeworld.sidecar.manifest.ManifestLimits;
 import io.github.kjmorse2.mconeworld.sidecar.migration.MigrationException;
 import io.github.kjmorse2.mconeworld.sidecar.migration.MigrationPlanner;
@@ -62,6 +64,7 @@ public final class ToolSession {
             : sidecar(locations.sidecarDir(), clock);
     List<ValidationIssue> all = new ArrayList<>(world.findings().issues());
     all.addAll(sidecar.findings().issues());
+    binding(world, sidecar).ifPresent(all::add);
     return new SessionStatus(
         locations, world, sidecar, actions(world, sidecar), ValidationResult.of(all));
   }
@@ -225,10 +228,21 @@ public final class ToolSession {
         }
       }
       case RECONCILE, BACKUP, NEW_SEASON -> {
-        usableSidecar(sidecar, b);
+        usableSidecar(world, sidecar, b);
         serverStopped(world, b);
         if (action == SessionAction.NEW_SEASON) {
           b.addAll(world.support().reasons());
+          boolean pending =
+              sidecar.manifest().map(m -> m.document().state().isActivationPending()).orElse(false);
+          if (pending) {
+            b.add(
+                block(
+                        SessionIssueCodes.ACTIVATION_PENDING,
+                        "The current season's activation has not been applied by the server yet")
+                    .withRemediation(
+                        "Start the server with the MCOneWorld plugin once, so it applies the"
+                            + " activation, then stop it."));
+          }
         }
       }
     }
@@ -241,7 +255,47 @@ public final class ToolSession {
     return b;
   }
 
-  private static void usableSidecar(SidecarSnapshot sidecar, List<ValidationIssue> b) {
+  /**
+   * Whether the sidecar belongs to this world: an error if its binding names another seed, a
+   * warning if it has no binding (or the world's seed is unknown), nothing if it matches.
+   */
+  private static Optional<ValidationIssue> binding(WorldInspection world, SidecarSnapshot sidecar) {
+    if (sidecar.manifest().isEmpty()) {
+      return Optional.empty();
+    }
+    WorldBinding binding = sidecar.manifest().get().document().state().worldBinding();
+    IssueLocation at = IssueLocation.root().field("world");
+    if (binding == null) {
+      return Optional.of(
+          ValidationIssue.warning(
+                  SessionIssueCodes.WORLD_UNBOUND,
+                  at,
+                  "The sidecar does not record which world it belongs to")
+              .withRemediation("Run Reconcile once: it records this world's binding."));
+    }
+    if (world.level().seed().isEmpty()) {
+      return Optional.of(
+          ValidationIssue.warning(
+              SessionIssueCodes.WORLD_UNBOUND,
+              at,
+              "The world's seed is unknown, so the sidecar's binding cannot be checked"));
+    }
+    if (!binding.matchesSeed(world.level().seed().getAsLong())) {
+      String name = binding.levelName();
+      return Optional.of(
+          ValidationIssue.error(
+                  SessionIssueCodes.WORLD_MISMATCH,
+                  at,
+                  "This sidecar belongs to a world with a different seed"
+                      + (name == null ? "" : " (\"" + name + "\")"))
+              .withRemediation(
+                  "Open the sidecar that belongs to this world, or this sidecar's own world."));
+    }
+    return Optional.empty();
+  }
+
+  private static void usableSidecar(
+      WorldInspection world, SidecarSnapshot sidecar, List<ValidationIssue> b) {
     if (sidecar.state() != SidecarState.PRESENT) {
       b.add(
           block(
@@ -249,6 +303,21 @@ public final class ToolSession {
               "No usable sidecar (state " + sidecar.state() + ")"));
       return;
     }
+    boolean newer =
+        sidecar
+            .manifest()
+            .map(m -> m.warnings().has(ManifestIssueCodes.NEWER_MINOR_VERSION))
+            .orElse(false);
+    if (newer) {
+      b.add(
+          block(
+                  SessionIssueCodes.SIDECAR_NEWER,
+                  "The sidecar was written by a newer MCOneWorld; it is read-only here")
+              .withRemediation("Upgrade the Tool to change this sidecar."));
+    }
+    binding(world, sidecar)
+        .filter(i -> i.code().equals(SessionIssueCodes.WORLD_MISMATCH))
+        .ifPresent(b::add);
     if (sidecar.recovery().map(r -> !r.findings().isEmpty()).orElse(false)) {
       b.add(
           block(SessionIssueCodes.RECOVERY_NEEDED, "An interrupted commit must be recovered first")

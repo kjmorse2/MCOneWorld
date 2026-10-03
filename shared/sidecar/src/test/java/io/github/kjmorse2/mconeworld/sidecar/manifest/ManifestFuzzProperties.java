@@ -18,7 +18,7 @@ import net.jqwik.api.statistics.Statistics;
  * from either entry point.
  */
 class ManifestFuzzProperties {
-  private static final byte[] GOLDEN = ManifestFixtures.resource(ManifestFixtures.GOLDEN_FULL_V1);
+  private static final byte[] GOLDEN = ManifestFixtures.resource(ManifestFixtures.GOLDEN_FULL);
   private static final ManifestCodec CODEC = new ManifestCodec();
 
   @Property(tries = 3000)

@@ -67,3 +67,7 @@ Sidecar history must survive decades of format changes. Root `AGENTS.md` §9 and
   - source changed between plan and apply
   - nondeterminism
   - an I/O failure and a crash at each of the 7 commit stages, with the source byte-identical before the commit point; recovery, and a successful retry, after every crash
+
+## Amendment (Tool T4, 2026-10-03)
+
+With manifest 1.1 the current schema is no longer the first of its major. The planner now applies point 4 to every minor of the current major (1.0 is `ALREADY_CURRENT` for the 1.1 reader). A chain from an older major ends at the first version of the target's major, here 1.0, because minors never need a step. The current reader then reads that result directly, and the commit writes it as 1.1. `MigrationPlanningTest.currentMajorNeedsNoMigration` covers the older minor.

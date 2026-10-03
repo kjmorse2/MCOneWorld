@@ -177,13 +177,18 @@ class MigrationPlanningTest {
 
   @Test
   void currentMajorNeedsNoMigration() {
-    byte[] golden = ManifestFixtures.resource(ManifestFixtures.GOLDEN_FULL_V1);
+    byte[] golden = ManifestFixtures.resource(ManifestFixtures.GOLDEN_FULL);
     assertRefused(
         () -> planner(SYNTHETIC).plan(golden, ManifestCodec.CURRENT),
         MigrationIssueCodes.ALREADY_CURRENT);
+    // An older minor of the current major is read directly too (ADR 0005): 1.0 needs no step.
+    byte[] olderMinor = ManifestFixtures.resource(ManifestFixtures.GOLDEN_FULL_V1_0);
+    assertRefused(
+        () -> planner(SYNTHETIC).plan(olderMinor, ManifestCodec.CURRENT),
+        MigrationIssueCodes.ALREADY_CURRENT);
     byte[] newerMinor =
         new String(golden, StandardCharsets.UTF_8)
-            .replace("\"1.0\"", "\"1.7\"")
+            .replace("\"1.1\"", "\"1.7\"")
             .getBytes(StandardCharsets.UTF_8);
     assertRefused(
         () -> planner(SYNTHETIC).plan(newerMinor, ManifestCodec.CURRENT),

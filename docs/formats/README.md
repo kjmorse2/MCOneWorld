@@ -4,7 +4,7 @@ Each MCOneWorld format is versioned independently of the application release (`s
 
 | Format | Version | Spec | Introduced |
 |---|---|---|---|
-| Sidecar manifest (JSON) | 1.0 | [manifest-v1.md](manifest-v1.md), example [examples/manifest-v1-example.json](examples/manifest-v1-example.json) | Prompt 04 |
+| Sidecar manifest (JSON) | 1.1 (reads 1.0) | [manifest-v1.md](manifest-v1.md), example [examples/manifest-v1-example.json](examples/manifest-v1-example.json) | Prompt 04 |
 | Sidecar storage layout, `writer.owner.json`, `transaction.json` | 1 | [sidecar-storage-v1.md](sidecar-storage-v1.md) | Prompt 05 |
 | Migration report (`reports/migrations/<runId>.json`) | 1 | [ADR 0005](../decisions/0005-manifest-migration-guarantees.md) | Prompt 06 |
 | Manifest 0.9 (**synthetic test fixture, never released**) | 0.9 | [manifest-v0.9-synthetic.md](manifest-v0.9-synthetic.md) | Prompt 06 |

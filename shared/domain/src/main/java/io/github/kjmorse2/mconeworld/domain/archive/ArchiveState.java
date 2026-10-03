@@ -8,12 +8,15 @@ import static io.github.kjmorse2.mconeworld.domain.archive.ArchiveIssueCodes.ACT
 import static io.github.kjmorse2.mconeworld.domain.archive.ArchiveIssueCodes.BACKUP_DUPLICATE_ID;
 import static io.github.kjmorse2.mconeworld.domain.archive.ArchiveIssueCodes.ORIGIN_MISALIGNED;
 import static io.github.kjmorse2.mconeworld.domain.archive.ArchiveIssueCodes.ORIGIN_NETHER_UNPAIRED;
+import static io.github.kjmorse2.mconeworld.domain.archive.ArchiveIssueCodes.PENDING_ACTIVATION_STALE;
 import static io.github.kjmorse2.mconeworld.domain.archive.ArchiveIssueCodes.PLAYER_ARCHIVE_DUPLICATE_ID;
 import static io.github.kjmorse2.mconeworld.domain.archive.ArchiveIssueCodes.PORTAL_MARKER_DUPLICATE_ID;
 import static io.github.kjmorse2.mconeworld.domain.archive.ArchiveIssueCodes.PROTECTED_REGION_DUPLICATE_ID;
 import static io.github.kjmorse2.mconeworld.domain.archive.ArchiveIssueCodes.SEASON_DUPLICATE_ID;
+import static io.github.kjmorse2.mconeworld.domain.archive.ArchiveIssueCodes.UNKNOWN_BACKUP_REFERENCE;
 import static io.github.kjmorse2.mconeworld.domain.archive.ArchiveIssueCodes.UNKNOWN_SEASON_REFERENCE;
 
+import io.github.kjmorse2.mconeworld.domain.BackupId;
 import io.github.kjmorse2.mconeworld.domain.DimensionKey;
 import io.github.kjmorse2.mconeworld.domain.DisplayName;
 import io.github.kjmorse2.mconeworld.domain.DomainErrorCode;
@@ -60,7 +63,16 @@ import org.jspecify.annotations.Nullable;
  * @param protectedRegions explicit protected areas
  * @param portalMarkers archive portal markers
  * @param backups verified backups
+ *     <p><b>Pending activation</b> (manifest 1.1, ADR 0011). The Tool activates a season offline
+ *     and records it in {@link #pendingActivation()}: the season is active in the sidecar, but its
+ *     world spawn and player resets have not been applied by the server yet. While that is so, no
+ *     other activation is allowed. A pending activation that names a season other than the active
+ *     one is stale: it is reported as a warning and ignored.
  * @param playerArchives player archive metadata
+ * @param worldBinding which world this archive belongs to, or {@code null} if never recorded
+ * @param pendingActivation the active season whose activation awaits application by the server, or
+ *     {@code null}
+ * @param archivedDimensions dimensions archived out of the world, in append order
  */
 public record ArchiveState(
     List<SeasonRecord> seasons,
@@ -68,7 +80,10 @@ public record ArchiveState(
     List<ProtectedRegion> protectedRegions,
     List<PortalMarker> portalMarkers,
     List<BackupRecord> backups,
-    List<PlayerArchiveRecord> playerArchives) {
+    List<PlayerArchiveRecord> playerArchives,
+    @Nullable WorldBinding worldBinding,
+    @Nullable SeasonId pendingActivation,
+    List<ArchivedDimension> archivedDimensions) {
 
   private static final IssueLocation SEASONS = IssueLocation.root().field("seasons");
 
@@ -82,6 +97,27 @@ public record ArchiveState(
     portalMarkers = List.copyOf(portalMarkers);
     backups = List.copyOf(backups);
     playerArchives = List.copyOf(playerArchives);
+    archivedDimensions = List.copyOf(archivedDimensions);
+  }
+
+  /** A state without the manifest 1.1 records: no binding, nothing pending, nothing archived. */
+  public ArchiveState(
+      List<SeasonRecord> seasons,
+      @Nullable SeasonId activeSeasonId,
+      List<ProtectedRegion> protectedRegions,
+      List<PortalMarker> portalMarkers,
+      List<BackupRecord> backups,
+      List<PlayerArchiveRecord> playerArchives) {
+    this(
+        seasons,
+        activeSeasonId,
+        protectedRegions,
+        portalMarkers,
+        backups,
+        playerArchives,
+        null,
+        null,
+        List.of());
   }
 
   /** A state with no records and no active season. */
@@ -201,6 +237,38 @@ public record ArchiveState(
           seasonIds,
           issues);
     }
+
+    SeasonId pending = pendingActivation;
+    if (pending != null) {
+      IssueLocation at = IssueLocation.root().field("pendingActivation");
+      if (!seasonIds.contains(pending)) {
+        seasonReference(pending, at, seasonIds, issues);
+      } else if (!pending.equals(activeSeasonId)) {
+        issues.add(
+            ValidationIssue.warning(
+                    PENDING_ACTIVATION_STALE,
+                    at,
+                    "The pending activation of season "
+                        + pending
+                        + " is stale: that season is not the active one, so it is ignored")
+                .withRemediation(
+                    "Check that every MCOneWorld component reads manifest 1.1 or newer."));
+      }
+    }
+    Set<BackupId> backupIds = new HashSet<>();
+    backups.forEach(b -> backupIds.add(b.id()));
+    for (int i = 0; i < archivedDimensions.size(); i++) {
+      ArchivedDimension archived = archivedDimensions.get(i);
+      IssueLocation at = IssueLocation.root().field("archivedDimensions").index(i);
+      seasonReference(archived.season(), at.field("season"), seasonIds, issues);
+      if (!backupIds.contains(archived.backup())) {
+        issues.add(
+            ValidationIssue.error(
+                UNKNOWN_BACKUP_REFERENCE,
+                at.field("backup"),
+                "Backup " + archived.backup() + " does not exist"));
+      }
+    }
     return ValidationResult.of(issues);
   }
 
@@ -310,6 +378,7 @@ public record ArchiveState(
    */
   public ArchiveState activate(SeasonId target) {
     validate().requireValid();
+    requireNothingPending();
     SeasonRecord next = requireSeason(target);
     SeasonRecord activated = next.transitionTo(SeasonStatus.ACTIVE);
     SeasonId previous = activeSeasonId;
@@ -335,6 +404,7 @@ public record ArchiveState(
    */
   public ArchiveState archiveActiveSeason() {
     validate().requireValid();
+    requireNothingPending();
     SeasonId active = activeSeasonId;
     if (active == null) {
       throw new InvalidDomainValueException(
@@ -359,6 +429,71 @@ public record ArchiveState(
     return withSeasons(replace(seasons, s -> s.id().equals(id) ? renamed : s), activeSeasonId);
   }
 
+  /**
+   * Activates {@code target} offline and marks the activation pending application by the server
+   * (ADR 0011): {@link #activate} plus {@link #pendingActivation()} set to {@code target}.
+   *
+   * @throws InvalidDomainValueException as {@link #activate}, and {@code SEASON_TRANSITION_ILLEGAL}
+   *     while another activation is pending
+   */
+  public ArchiveState activateForApplication(SeasonId target) {
+    ArchiveState activated = activate(target);
+    return activated.copy(
+        activated.seasons,
+        activated.activeSeasonId,
+        backups,
+        worldBinding,
+        target,
+        archivedDimensions);
+  }
+
+  /**
+   * Records that the server applied the pending activation of {@code season} (the plugin's side of
+   * ADR 0011).
+   *
+   * @throws InvalidDomainValueException {@code SEASON_TRANSITION_ILLEGAL} unless {@code season} is
+   *     the active season and its activation is pending
+   */
+  public ArchiveState markActivationApplied(SeasonId season) {
+    validate().requireValid();
+    if (!isActivationPending() || !season.equals(pendingActivation)) {
+      throw new InvalidDomainValueException(
+          DomainErrorCode.SEASON_TRANSITION_ILLEGAL,
+          "No pending activation of season " + season + " to mark applied");
+    }
+    return copy(seasons, activeSeasonId, backups, worldBinding, null, archivedDimensions);
+  }
+
+  /** Whether the active season's activation still awaits application (a stale marker does not). */
+  public boolean isActivationPending() {
+    SeasonId pending = pendingActivation;
+    return pending != null && pending.equals(activeSeasonId);
+  }
+
+  /** Records which world this archive belongs to, replacing any earlier binding. */
+  public ArchiveState withWorldBinding(WorldBinding binding) {
+    return checked(
+        copy(
+            seasons,
+            activeSeasonId,
+            backups,
+            Objects.requireNonNull(binding, "binding"),
+            pendingActivation,
+            archivedDimensions));
+  }
+
+  /** Appends an archived-dimension record; its backup must already be recorded. */
+  public ArchiveState withArchivedDimension(ArchivedDimension archived) {
+    return checked(
+        copy(
+            seasons,
+            activeSeasonId,
+            backups,
+            worldBinding,
+            pendingActivation,
+            append(archivedDimensions, archived)));
+  }
+
   /** Appends a protected region. The resulting state must validate. */
   public ArchiveState withProtectedRegion(ProtectedRegion region) {
     return checked(
@@ -368,7 +503,10 @@ public record ArchiveState(
             append(protectedRegions, region),
             portalMarkers,
             backups,
-            playerArchives));
+            playerArchives,
+            worldBinding,
+            pendingActivation,
+            archivedDimensions));
   }
 
   /** Appends a portal marker. The resulting state must validate. */
@@ -380,19 +518,22 @@ public record ArchiveState(
             protectedRegions,
             append(portalMarkers, marker),
             backups,
-            playerArchives));
+            playerArchives,
+            worldBinding,
+            pendingActivation,
+            archivedDimensions));
   }
 
   /** Appends a backup record. The resulting state must validate. */
   public ArchiveState withBackup(BackupRecord backup) {
     return checked(
-        new ArchiveState(
+        copy(
             seasons,
             activeSeasonId,
-            protectedRegions,
-            portalMarkers,
             append(backups, backup),
-            playerArchives));
+            worldBinding,
+            pendingActivation,
+            archivedDimensions));
   }
 
   /** Appends a player archive record. The resulting state must validate. */
@@ -404,7 +545,10 @@ public record ArchiveState(
             protectedRegions,
             portalMarkers,
             backups,
-            append(playerArchives, archive)));
+            append(playerArchives, archive),
+            worldBinding,
+            pendingActivation,
+            archivedDimensions));
   }
 
   private ArchiveState checked(ArchiveState next) {
@@ -422,8 +566,38 @@ public record ArchiveState(
   }
 
   private ArchiveState withSeasons(List<SeasonRecord> newSeasons, @Nullable SeasonId newActive) {
+    return copy(
+        newSeasons, newActive, backups, worldBinding, pendingActivation, archivedDimensions);
+  }
+
+  /** A copy with the fields transitions change; regions, markers, and player archives are kept. */
+  private ArchiveState copy(
+      List<SeasonRecord> newSeasons,
+      @Nullable SeasonId newActive,
+      List<BackupRecord> newBackups,
+      @Nullable WorldBinding newBinding,
+      @Nullable SeasonId newPending,
+      List<ArchivedDimension> newArchived) {
     return new ArchiveState(
-        newSeasons, newActive, protectedRegions, portalMarkers, backups, playerArchives);
+        newSeasons,
+        newActive,
+        protectedRegions,
+        portalMarkers,
+        newBackups,
+        playerArchives,
+        newBinding,
+        newPending,
+        newArchived);
+  }
+
+  private void requireNothingPending() {
+    if (isActivationPending()) {
+      throw new InvalidDomainValueException(
+          DomainErrorCode.SEASON_TRANSITION_ILLEGAL,
+          "The activation of season "
+              + pendingActivation
+              + " has not been applied by the server yet; start the server once first");
+    }
   }
 
   private static <T> List<T> append(List<T> list, T element) {

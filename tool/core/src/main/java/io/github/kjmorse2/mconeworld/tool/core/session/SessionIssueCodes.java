@@ -32,6 +32,22 @@ public final class SessionIssueCodes {
   public static final IssueCode OPERATION_UNFINISHED =
       IssueCode.of("tool.session.operation_unfinished");
 
+  /**
+   * The manifest was written by a newer MCOneWorld (a newer minor schema). The Tool reads it but
+   * never writes it (manifest-v1.md §5.1).
+   */
+  public static final IssueCode SIDECAR_NEWER = IssueCode.of("tool.session.sidecar_newer");
+
+  /** The sidecar is bound to a world with a different seed: it belongs to another world. */
+  public static final IssueCode WORLD_MISMATCH = IssueCode.of("tool.session.world_mismatch");
+
+  /** The sidecar has no world binding yet (a schema 1.0 sidecar). Reconcile records one. */
+  public static final IssueCode WORLD_UNBOUND = IssueCode.of("tool.session.world_unbound");
+
+  /** The active season's offline activation has not been applied by the server yet (ADR 0011). */
+  public static final IssueCode ACTIVATION_PENDING =
+      IssueCode.of("tool.session.activation_pending");
+
   /** The chunk index is missing or not usable. */
   public static final IssueCode INDEX_UNUSABLE = IssueCode.of("tool.session.index_unusable");
 

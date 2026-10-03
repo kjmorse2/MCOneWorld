@@ -22,8 +22,8 @@ The **Tool activates the season** in the sidecar, offline, and marks that activa
    - appends the new season with its origins and nominal spawn
    - archives the previously active season
    - activates the new one
-   - sets the new season's `pendingApplication` marker (manifest 1.1)
-2. **When the plugin finds an active season with `pendingApplication` set, it:**
+   - records the new season as the root `pendingActivation` (manifest 1.1)
+2. **When the plugin finds an active season with `pendingActivation` set, it:**
    - generates the spawn area
    - finds a safe Y at the planned spawn X/Z
    - applies the world spawn
@@ -48,10 +48,17 @@ A season with the marker set is fully valid sidecar state. It is not a recovery 
 
 ## 5. Migration impact
 
-Manifest 1.1 adds the per-season `pendingApplication` field. It is absent or `false` for every 1.0 season, and the 1.0 → 1.1 migration writes `false`. A 1.0 reader meeting 1.1 sees a newer minor version, and preserves or refuses it according to ADR 0005.
+Manifest 1.1 adds the root member `pendingActivation` (a season id or `null`; `manifest-v1.md` §3.1). It is a minor addition, so there is no migration: a 1.1 reader reads 1.0 directly, with nothing pending.
+
+Two rules keep the marker safe for readers that do not understand it:
+
+- **Stale markers are harmless.** A marker naming a season other than the active one is reported as a warning (`archive.pending_activation.stale`) and ignored.
+- **Actors read newer minors read-only** (`manifest-v1.md` §5.1). A component that does not understand the marker never writes over it, so it never activates another season or runs as though the pending one were applied.
+
+The marker is root-level rather than per season, because at most one activation can be pending, and that is checkable by construction.
 
 ## 6. How it is tested
 
-- **Shared:** codec, golden, migration, and fuzz tests for the new field, plus `ArchiveState` validation (at most one pending activation, and only on the active season).
+- **Shared:** `ArchiveStateV11Test` (pending until marked applied, every other transition refused meanwhile, stale marker a warning, unknown season an error) and `ManifestV11Test` (1.0 still reads; the member is required in 1.1 and unknown in 1.0), plus the golden `full-1.1.json` and the manifest fuzzer.
 - **Tool:** the transition sets the marker exactly in its commit transaction, and a second transition is refused while the marker is set.
 - **Plugin:** tests are owned by the Paper project.

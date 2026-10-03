@@ -46,6 +46,17 @@ public final class ArchiveIssueCodes {
   public static final IssueCode UNKNOWN_SEASON_REFERENCE =
       IssueCode.of("archive.reference.unknown_season");
 
+  /** ERROR: a record refers to a backup that does not exist (manifest 1.1). */
+  public static final IssueCode UNKNOWN_BACKUP_REFERENCE =
+      IssueCode.of("archive.reference.unknown_backup");
+
+  /**
+   * WARNING: the pending activation names a season that is no longer the active one, so it is
+   * ignored (manifest 1.1, ADR 0011). It can only arise from a writer that did not understand it.
+   */
+  public static final IssueCode PENDING_ACTIVATION_STALE =
+      IssueCode.of("archive.pending_activation.stale");
+
   /** WARNING: a season origin is not aligned to its dimension's recommended alignment. */
   public static final IssueCode ORIGIN_MISALIGNED = IssueCode.of("season.origin.misaligned");
 

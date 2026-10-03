@@ -18,16 +18,20 @@ import io.github.kjmorse2.mconeworld.domain.DimensionKey;
 import io.github.kjmorse2.mconeworld.domain.DisplayName;
 import io.github.kjmorse2.mconeworld.domain.archive.ArchiveCategory;
 import io.github.kjmorse2.mconeworld.domain.archive.ArchiveState;
+import io.github.kjmorse2.mconeworld.domain.archive.ArchivedDimension;
 import io.github.kjmorse2.mconeworld.domain.archive.BackupRecord;
 import io.github.kjmorse2.mconeworld.domain.archive.PlayerArchiveRecord;
 import io.github.kjmorse2.mconeworld.domain.archive.PortalMarker;
+import io.github.kjmorse2.mconeworld.domain.archive.WorldBinding;
 import io.github.kjmorse2.mconeworld.domain.coordinate.BlockPosition;
 import io.github.kjmorse2.mconeworld.domain.coordinate.ChunkRectangle;
 import io.github.kjmorse2.mconeworld.domain.provenance.ProtectedRegion;
 import io.github.kjmorse2.mconeworld.sidecar.manifest.FeatureKey;
 import io.github.kjmorse2.mconeworld.sidecar.manifest.FeatureRecord;
 import io.github.kjmorse2.mconeworld.sidecar.manifest.FileReference;
+import io.github.kjmorse2.mconeworld.sidecar.manifest.ManifestCodec;
 import io.github.kjmorse2.mconeworld.sidecar.manifest.ManifestDocument;
+import io.github.kjmorse2.mconeworld.sidecar.manifest.SchemaVersion;
 import io.github.kjmorse2.mconeworld.sidecar.storage.SidecarPath;
 import java.io.IOException;
 import java.io.InputStream;
@@ -36,18 +40,25 @@ import java.util.EnumSet;
 import java.util.List;
 
 /**
- * Canonical manifest fixtures. {@link #fullDocument()} exercises every v1 member. Its canonical
- * encoding is the golden file {@value #GOLDEN_FULL_V1}, whose schema version and SHA-256 are
- * recorded in {@value #GOLDEN_FULL_V1}{@code .meta}. The same bytes are published as {@code
- * docs/formats/examples/manifest-v1-example.json}.
+ * Canonical manifest fixtures. {@link #fullDocument()} exercises every member of the current schema
+ * (1.1). Its canonical encoding is the golden file {@value #GOLDEN_FULL}, whose schema version and
+ * SHA-256 are recorded in {@value #GOLDEN_FULL}{@code .meta}. The same bytes are published as
+ * {@code docs/formats/examples/manifest-v1-example.json}.
+ *
+ * <p>{@value #GOLDEN_FULL_V1_0} is the schema 1.0 golden, kept unchanged as a compatibility input:
+ * it must keep decoding, to {@link #fullDocumentV1_0()}.
  *
  * <p>Golden files are immutable: tests copy the bytes before corrupting them. If the format changes
  * intentionally, write the new bytes, review the diff, update the {@code .meta} checksum, and
  * record the change in {@code docs/formats/manifest-v1.md}.
  */
 public final class ManifestFixtures {
-  /** Classpath resource of the canonical v1 golden manifest. */
-  public static final String GOLDEN_FULL_V1 =
+  /** Classpath resource of the canonical golden manifest of the current schema (1.1). */
+  public static final String GOLDEN_FULL =
+      "/io/github/kjmorse2/mconeworld/fixtures/manifest/v1/full-1.1.json";
+
+  /** Classpath resource of the schema 1.0 golden manifest, a frozen compatibility input. */
+  public static final String GOLDEN_FULL_V1_0 =
       "/io/github/kjmorse2/mconeworld/fixtures/manifest/v1/full.json";
 
   /** An arbitrary but well-formed checksum value used by fixtures. */
@@ -60,8 +71,55 @@ public final class ManifestFixtures {
 
   private ManifestFixtures() {}
 
-  /** A valid document that uses every v1 member, with no warnings. */
+  /**
+   * A valid document that uses every member of the current schema, with no warnings: {@link
+   * #fullDocumentV1_0()} plus a world binding, season 2's activation pending application, and the
+   * End archived (into backup 1) when season 1 ended.
+   */
   public static ManifestDocument fullDocument() {
+    ManifestDocument legacy = fullDocumentV1_0();
+    ArchiveState state =
+        legacy
+            .state()
+            .withWorldBinding(
+                new WorldBinding(
+                    WorldBinding.seedChecksum(-6425566648705237911L),
+                    "Golden World",
+                    4903,
+                    instant(1_000)))
+            .withArchivedDimension(
+                new ArchivedDimension(
+                    DimensionKey.THE_END,
+                    seasonId(1),
+                    operationId(1),
+                    backupId(1),
+                    instant(2_450)));
+    // Season 2 was activated offline (ADR 0011): rebuild the state with its activation pending.
+    state =
+        new ArchiveState(
+            state.seasons(),
+            state.activeSeasonId(),
+            state.protectedRegions(),
+            state.portalMarkers(),
+            state.backups(),
+            state.playerArchives(),
+            state.worldBinding(),
+            seasonId(2),
+            state.archivedDimensions());
+    return new ManifestDocument(
+        ManifestCodec.CURRENT,
+        legacy.archiveId(),
+        legacy.createdAt(),
+        legacy.revision(),
+        state,
+        legacy.backupPaths(),
+        legacy.files(),
+        legacy.features(),
+        legacy.preserved());
+  }
+
+  /** The content of the schema 1.0 golden {@value #GOLDEN_FULL_V1_0}: every 1.0 member. */
+  public static ManifestDocument fullDocumentV1_0() {
     ArchiveState state =
         ArchiveState.empty()
             .appendSeason(
@@ -144,10 +202,19 @@ public final class ManifestFixtures {
     for (int i = 0; i < 42; i++) {
       document = document.nextRevision();
     }
-    return document;
+    return new ManifestDocument(
+        new SchemaVersion(1, 0),
+        document.archiveId(),
+        document.createdAt(),
+        document.revision(),
+        document.state(),
+        document.backupPaths(),
+        document.files(),
+        document.features(),
+        document.preserved());
   }
 
-  /** Returns the bytes of a classpath resource, for example {@link #GOLDEN_FULL_V1}. */
+  /** Returns the bytes of a classpath resource, for example {@link #GOLDEN_FULL}. */
   public static byte[] resource(String name) {
     try (InputStream in = ManifestFixtures.class.getResourceAsStream(name)) {
       if (in == null) {

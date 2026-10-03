@@ -133,8 +133,9 @@ DecodedManifest f = ManifestFiles.readOnly(path, codec);   // never modifies the
 - Errors are classified by `ManifestProblemKind`, in precedence order: `SYNTAX`, `LIMIT`, `UNSUPPORTED_VERSION`, `SCHEMA`, `REFERENTIAL`, `DOMAIN`.
 - Compatibility:
   - major ≠ 1 fails closed
-  - 1.0 files are strict: unknown members are rejected
-  - 1.N files (N > 0) are accepted with a warning, and unknown members are preserved through read-modify-write
+  - the current schema is **1.1**. 1.0 and 1.1 files are strict (unknown members are rejected), and 1.0 files read directly with the 1.1 members' 1.0 meaning; writes are always 1.1
+  - 1.N files (N > 1) are accepted with a warning, and unknown members are preserved through read-modify-write. Components that change season state treat them as read-only (`manifest-v1.md` §5.1).
+  - 1.1 adds, on `ArchiveState`: `worldBinding` (`WorldBinding`: seed hash, level name, data version), `pendingActivation` with `activateForApplication`, `markActivationApplied`, and `isActivationPending` (ADR 0011), and `archivedDimensions` (`ArchivedDimension`, ADR 0010)
   - namespaced `extensions` objects are always preserved
 - `FileReference(role, @Nullable dimension, SidecarPath path, Checksum, sizeBytes)`, `FeatureKey`, `FeatureRecord(adoptedAt, configurationVersion)`, `SchemaVersion`.
 - `sidecar.storage.SidecarPath`: the only path form ever stored. It is relative, lowercase, portable, and traversal-proof; failures raise `UnsafeSidecarPathException` (`sidecar.path.unsafe`).
@@ -183,7 +184,7 @@ try (SidecarWriter w = store.openWriter(owner, clock, StaleLockPolicy.REFUSE)) {
 - **Applying** re-checks the backup, the source checksum, and determinism. It then commits through storage with a persisted report at `reports/migrations/<runId>.json`.
 - **Never implicit:** a legacy manifest makes reads fail with `manifest.version.unsupported`, and ordinary writes refuse.
 - **Loss is refused** (`UNSUPPORTED_DATA`), never hidden in warnings.
-- `MigrationRegistry.builtIn()` is **empty**: 1.0 is the first released schema. v0.9 is a synthetic, test-only fixture.
+- `MigrationRegistry.builtIn()` is **empty**: 1.0 is the first released schema, and minors (1.1) need no step. v0.9 is a synthetic, test-only fixture.
 
 ### `domain.operation` and `sidecar.operation`: plans and journals (Prompt 07)
 

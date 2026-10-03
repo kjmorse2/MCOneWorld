@@ -4,6 +4,8 @@ package io.github.kjmorse2.mconeworld.tool.core.session;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.kjmorse2.mconeworld.domain.DimensionKey;
+import io.github.kjmorse2.mconeworld.domain.archive.ArchiveState;
+import io.github.kjmorse2.mconeworld.domain.archive.WorldBinding;
 import io.github.kjmorse2.mconeworld.domain.validation.IssueCode;
 import io.github.kjmorse2.mconeworld.domain.validation.ValidationIssue;
 import io.github.kjmorse2.mconeworld.fixtures.DomainFixtures;
@@ -29,6 +31,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -58,15 +61,25 @@ class ToolSessionTest {
         .openWriter(OWNER, CLOCK, StaleLockPolicy.REFUSE);
   }
 
-  /** A sidecar with a manifest and an empty chunk index. */
+  /** A sidecar bound to the synthetic world (seed 1) with an empty chunk index. */
   private static void initialized(Path sidecar) throws Exception {
+    initialized(sidecar, state -> state.withWorldBinding(binding(1)));
+  }
+
+  /** A sidecar whose archive state is {@code edit} applied to the empty state. */
+  private static void initialized(Path sidecar, UnaryOperator<ArchiveState> edit) throws Exception {
     Files.createDirectories(sidecar);
     try (SidecarWriter writer = writer(sidecar)) {
-      writer
-          .begin(null)
-          .commit(ManifestDocument.create(DomainFixtures.archiveId(1), DomainFixtures.EPOCH));
+      ManifestDocument doc =
+          ManifestDocument.create(DomainFixtures.archiveId(1), DomainFixtures.EPOCH);
+      writer.begin(null).commit(doc.withState(edit.apply(doc.state())));
       ChunkIndexStore.of(writer.store()).create(writer).close();
     }
+  }
+
+  private static WorldBinding binding(long seed) {
+    return new WorldBinding(
+        WorldBinding.seedChecksum(seed), "Synthetic", 4903, DomainFixtures.EPOCH);
   }
 
   private static SessionStatus inspect(ToolLocations locations) throws Exception {
@@ -221,6 +234,64 @@ class ToolSessionTest {
     assertThat(status.action(SessionAction.INITIALIZE_SIDECAR).available()).isFalse();
     ToolLocations around = new ToolLocations(base.worldDir(), base.worldDir().getParent());
     assertThat(around.overlap()).isPresent();
+  }
+
+  @Test
+  void aSidecarOfAnotherWorldBlocksTheWorkflowsAndAnUnboundOneOnlyWarns() throws Exception {
+    ToolLocations locations = world(4903);
+    initialized(locations.sidecarDir(), state -> state.withWorldBinding(binding(2)));
+    SessionStatus mismatch = inspect(locations);
+    assertThat(mismatch.findings().has(SessionIssueCodes.WORLD_MISMATCH)).isTrue();
+    for (SessionAction action :
+        List.of(SessionAction.RECONCILE, SessionAction.BACKUP, SessionAction.NEW_SEASON)) {
+      assertThat(blockers(mismatch, action))
+          .as(action.name())
+          .contains(SessionIssueCodes.WORLD_MISMATCH);
+    }
+
+    ToolLocations other = new ToolLocations(locations.worldDir(), temp.resolve("unbound"));
+    initialized(other.sidecarDir(), state -> state);
+    SessionStatus unbound = inspect(other);
+    assertThat(unbound.findings().issues())
+        .extracting(ValidationIssue::code)
+        .containsExactly(SessionIssueCodes.WORLD_UNBOUND);
+    assertThat(unbound.action(SessionAction.RECONCILE).available()).isTrue();
+  }
+
+  @Test
+  void aPendingActivationBlocksTheNextSeasonOnly() throws Exception {
+    ToolLocations locations = world(4903);
+    initialized(
+        locations.sidecarDir(),
+        state ->
+            state
+                .withWorldBinding(binding(1))
+                .appendSeason(DomainFixtures.season(1).build())
+                .activateForApplication(DomainFixtures.seasonId(1)));
+    SessionStatus status = inspect(locations);
+    assertThat(blockers(status, SessionAction.NEW_SEASON))
+        .containsExactly(SessionIssueCodes.ACTIVATION_PENDING);
+    assertThat(status.action(SessionAction.BACKUP).available()).isTrue();
+    assertThat(status.action(SessionAction.RECONCILE).available()).isTrue();
+  }
+
+  @Test
+  void aManifestFromANewerMinorIsReadOnly() throws Exception {
+    ToolLocations locations = world(4903);
+    initialized(locations.sidecarDir());
+    Path manifest = locations.sidecarDir().resolve("manifest.json");
+    Files.writeString(
+        manifest,
+        Files.readString(manifest)
+            .replace("\"schemaVersion\": \"1.1\"", "\"schemaVersion\": \"1.9\""));
+    SessionStatus status = inspect(locations);
+    assertThat(status.sidecar().state()).isEqualTo(SidecarState.PRESENT);
+    for (SessionAction action :
+        List.of(SessionAction.RECONCILE, SessionAction.BACKUP, SessionAction.NEW_SEASON)) {
+      assertThat(blockers(status, action))
+          .as(action.name())
+          .contains(SessionIssueCodes.SIDECAR_NEWER);
+    }
   }
 
   @Test

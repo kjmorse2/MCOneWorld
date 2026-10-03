@@ -66,7 +66,8 @@ final class TestMigrations {
       public byte[] migrate(byte[] source, MigrationRecorder recorder) {
         String golden =
             new String(
-                ManifestFixtures.resource(ManifestFixtures.GOLDEN_FULL_V1), StandardCharsets.UTF_8);
+                ManifestFixtures.resource(ManifestFixtures.GOLDEN_FULL_V1_0),
+                StandardCharsets.UTF_8);
         return golden.replace("  \"revision\": 42,\n", "").getBytes(StandardCharsets.UTF_8);
       }
     };

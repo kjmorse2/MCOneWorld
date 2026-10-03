@@ -72,7 +72,7 @@ If a version keeps the fight in `level.dat` instead, that version stays inspect-
 
 ## 5. Migration impact
 
-- Manifest 1.1 adds archived-dimension records (shared format work, milestone T4) together with a 1.0 → 1.1 migration.
+- Manifest 1.1 adds the root `archivedDimensions` records (`manifest-v1.md` §3.1). It is a minor addition; a 1.1 reader reads 1.0 directly, so no migration exists.
 - No world format changes: the result is an ordinary vanilla world whose End has not been generated yet.
 
 ## 6. How it is tested
