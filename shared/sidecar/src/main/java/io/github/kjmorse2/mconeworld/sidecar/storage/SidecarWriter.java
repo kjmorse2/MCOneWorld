@@ -2,6 +2,7 @@
 package io.github.kjmorse2.mconeworld.sidecar.storage;
 
 import io.github.kjmorse2.mconeworld.domain.ArchiveId;
+import io.github.kjmorse2.mconeworld.domain.BackupId;
 import io.github.kjmorse2.mconeworld.domain.Checksum;
 import io.github.kjmorse2.mconeworld.sidecar.manifest.DecodedManifest;
 import io.github.kjmorse2.mconeworld.sidecar.manifest.ManifestException;
@@ -22,6 +23,7 @@ public final class SidecarWriter implements AutoCloseable {
   private final SidecarLock lock;
   private @Nullable SidecarTransaction open;
   private @Nullable IndexFileWriter indexClaim;
+  private @Nullable BackupFileWriter backupClaim;
 
   SidecarWriter(SidecarStore store, SidecarLock lock) {
     this.store = store;
@@ -211,6 +213,29 @@ public final class SidecarWriter implements AutoCloseable {
   void releaseIndexClaim(IndexFileWriter claim) {
     if (indexClaim == claim) {
       indexClaim = null;
+    }
+  }
+
+  /**
+   * Opens the payload writer for the new backup {@code id} (ADR 0012). At most one backup is
+   * written per writer at a time; close the returned writer to release it.
+   *
+   * @throws IllegalStateException if another backup claim is open
+   * @throws StorageException {@code LOCK_LOST}
+   */
+  public BackupFileWriter openBackupWriter(BackupId id) throws StorageException {
+    lock.verifyHeld();
+    if (backupClaim != null) {
+      throw new IllegalStateException("A backup is already being written");
+    }
+    BackupFileWriter claim = new BackupFileWriter(this, id);
+    backupClaim = claim;
+    return claim;
+  }
+
+  void releaseBackupClaim(BackupFileWriter claim) {
+    if (backupClaim == claim) {
+      backupClaim = null;
     }
   }
 

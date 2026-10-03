@@ -16,7 +16,8 @@
     {"name": "mconeworld-operation-plan", "version": "1.0", "spec": "docs/formats/operation-journal-v1.md"},
     {"name": "mconeworld-operation-journal", "version": "1.0", "spec": "docs/formats/operation-journal-v1.md"},
     {"name": "mconeworld-chunk-index", "version": "1.0", "spec": "docs/formats/chunk-index-v1.md"},
-    {"name": "mconeworld-chunk-index-export", "version": "1.0", "spec": "docs/formats/chunk-index-v1.md"}
+    {"name": "mconeworld-chunk-index-export", "version": "1.0", "spec": "docs/formats/chunk-index-v1.md"},
+    {"name": "mconeworld-backup", "version": "1.0", "spec": "docs/formats/backup-v1.md"}
   ],
   "protocol": {
     "spec": "docs/formats/protocol-v1.md",

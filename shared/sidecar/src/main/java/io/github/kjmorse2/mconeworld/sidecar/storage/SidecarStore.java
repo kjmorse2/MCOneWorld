@@ -96,6 +96,11 @@ public final class SidecarStore {
     return new IndexFiles(this);
   }
 
+  /** Read access to the backups area, {@code backups/} (ADR 0012). */
+  public BackupFiles backupFiles() {
+    return new BackupFiles(this);
+  }
+
   /** Read-only access to the {@code operations/} area (plans and journals). */
   public OperationFiles operationFiles() {
     return new OperationFiles(this);

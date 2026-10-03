@@ -55,7 +55,7 @@ class GoldenInventoryTest {
               .formatHex(MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(file)));
       assertThat(meta.getProperty("sha256")).as("sha256 in " + metaFile).isEqualTo(sha256);
     }
-    // 4 chunk-index, 2 manifest, 2 operation, 7 protocol; update when a fixture is added.
-    assertThat(data).as("golden data files").isEqualTo(15);
+    // 2 backup, 4 chunk-index, 2 manifest, 2 operation, 7 protocol; update when a fixture is added.
+    assertThat(data).as("golden data files").isEqualTo(17);
   }
 }

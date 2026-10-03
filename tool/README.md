@@ -19,7 +19,9 @@ T3, session status. `tool/core`'s `ToolSession.inspect(locations, clock)` opens 
 - recovery leftovers, the chunk index, and the operation journals
 - for every action, whether it can start, or each reason it can't (server running, sidecar locked, recovery needed, unfinished operation, version not pinned, and so on)
 
-The world-binding check arrives with manifest 1.1 in T4. The app still opens an empty main window.
+It also checks that the sidecar belongs to this world (manifest 1.1's seed binding), that a newer-format manifest is treated read-only, and that a pending activation blocks the next season.
+
+T4, shared formats. Manifest 1.1 (world binding, pending activation, archived dimensions) and the `mconeworld-backup` 1.0 format (`docs/formats/backup-v1.md`) are in `shared:sidecar`. The app still opens an empty main window.
 
 ```sh
 ./gradlew toolCheck          # tests (UI tests run headless through Monocle), formatting, analysis, guards

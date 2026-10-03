@@ -1,0 +1,5 @@
+# Golden fixture metadata (shared/AGENTS.md "Golden files include format version and expected checksum").
+# Produced by BackupFixtures.main (BackupManifestCodec.encode); reviewed by hand before pinning.
+format=mconeworld-backup
+version=1.0
+sha256=1dd3da3d20cee1e8be75ff68a77d0677cf3da736d3127fc07d1b91893405d540

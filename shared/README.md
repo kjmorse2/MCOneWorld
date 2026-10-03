@@ -283,6 +283,20 @@ The format is [`docs/formats/protocol-v1.md`](../docs/formats/protocol-v1.md); t
 - **Reaction to bad input:** log the code and ignore the message. Never disconnect.
 - **Test support:** `fixtures.protocol.ProtocolFixtures`, the seven golden vectors.
 
+### `sidecar.backup`: backups in the sidecar (Tool T4)
+
+The format is [`docs/formats/backup-v1.md`](../docs/formats/backup-v1.md); the decision is ADR 0012.
+
+| Type | Use |
+|---|---|
+| `storage.BackupEntryPath` | A payload path, `world/…` or `sidecar/…`, with names kept verbatim (spaces and capitals allowed). Unsafe paths are refused. Ordered by code point. |
+| `SidecarWriter.openBackupWriter(id)` → `storage.BackupFileWriter` | Writes the payload under the lock: `createDirectory`, `createNew(entry)`, `syncDirectories`, and an explicit `deletePartial` |
+| `SidecarStore.backupFiles()` → `storage.BackupFiles` | Read access: `exists`, `hasManifest`, `open`, `walk`; `manifestPath(id)` |
+| `BackupManifest`, `BackupEntry`, `BackupKind` | The content of `backup.json` (`FULL` or `DIMENSION_ARCHIVE`) |
+| `BackupManifestCodec` | Canonical `mconeworld-backup` 1.0, read strictly |
+| `BackupVerifier` | `verifyPayload(files, manifest)` before recording; `verify(files, id, recordedChecksum)` afterwards. Reports partial, changed, missing, and unexpected files. |
+| `BackupRecords.stageAndRecord(tx, base, verification, operation, season)` | Stages `backup.json` and adds the `BackupRecord`. Only a verified backup is accepted, and the commit is the commit point. |
+
 ## Release status (Prompt 11)
 
 The shared project is a release candidate, **`shared 0.1.0-rc.1`**, and is ready for platform work. The report is [`docs/architecture/shared-release-audit.md`](../docs/architecture/shared-release-audit.md). It covers:

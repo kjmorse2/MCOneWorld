@@ -146,6 +146,14 @@ The chunk index ([`chunk-index-v1.md`](chunk-index-v1.md), ADR 0007) is the seco
 
 **Storage seam.** `StorageFileSystem` gained `openRandomAccess` and `WritableFile.syncData()` (`fdatasync`) for the index. The index's log commits use the cheaper `syncData()`, because it also persists the file length the data needs.
 
+## 6b. The `backups/` area
+
+Backups (ADR 0012) live in `backups/<backupId>/`. The format is [`backup-v1.md`](backup-v1.md).
+
+- **Payload.** It is written directly through `SidecarWriter.openBackupWriter(id)`, which holds the writer lock, allows one claim per writer, creates only new files, refuses symbolic links, and never overwrites.
+- **Commit point.** Each backup's `backup.json` is staged through an ordinary transaction, together with its `BackupRecord`; that commit is the backup's commit point.
+- **Recovery.** Recovery never looks into `backups/`. A directory without `backup.json` is a partial backup, reported by `BackupVerifier` and removed only by an explicit `deletePartial`.
+
 ## 7. Error codes
 
 `StorageException.code()` is one of:

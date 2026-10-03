@@ -58,6 +58,9 @@ class SharedContractsTest {
     code.put(OperationPlanCodec.FORMAT, OperationPlanCodec.CURRENT.toString());
     code.put(ChunkIndexExport.FORMAT, ChunkIndexExport.VERSION);
     code.put(
+        io.github.kjmorse2.mconeworld.sidecar.backup.BackupManifestCodec.FORMAT,
+        io.github.kjmorse2.mconeworld.sidecar.backup.BackupManifestCodec.VERSION);
+    code.put(
         (String) constant("operation.JournalEntryCodec", "FORMAT"),
         constant("operation.JournalEntryCodec", "CURRENT").toString());
     code.put(

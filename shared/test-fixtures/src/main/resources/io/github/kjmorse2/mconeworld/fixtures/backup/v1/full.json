@@ -1,0 +1,48 @@
+{
+  "createdAt": "2026-01-01T00:40:00Z",
+  "dimension": null,
+  "entries": [
+    {
+      "path": "sidecar/chunk-index/catalog",
+      "sha256": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "sizeBytes": 512
+    },
+    {
+      "path": "sidecar/manifest.json",
+      "sha256": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "sizeBytes": 3000
+    },
+    {
+      "path": "world/datapacks/afk display v1.1.15 (MC 1.21-1.21.11).zip",
+      "sha256": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "sizeBytes": 20480
+    },
+    {
+      "path": "world/dimensions/minecraft/overworld/data/DistantHorizons.sqlite",
+      "sha256": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "sizeBytes": 4096
+    },
+    {
+      "path": "world/dimensions/minecraft/overworld/region/r.-1.0.mca",
+      "sha256": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "sizeBytes": 8192
+    },
+    {
+      "path": "world/level.dat",
+      "sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "sizeBytes": 641
+    },
+    {
+      "path": "world/players/data/5cd87f22-1adf-47f2-abf3-04a41dae96ee.dat",
+      "sha256": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "sizeBytes": 1234
+    }
+  ],
+  "format": "mconeworld-backup",
+  "id": "bacc0000-0000-4000-8000-000000000001",
+  "kind": "FULL",
+  "sidecarRevision": 41,
+  "sourceDataVersion": 4903,
+  "totalBytes": 38155,
+  "version": "1.0"
+}

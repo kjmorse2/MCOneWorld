@@ -1,6 +1,6 @@
 # ADR 0012: Backups in the sidecar
 
-- Status: **Accepted**, 2026-10-02, by the project owner (tool-planning session): backups live inside the sidecar's `backups/` area. The byte-level format is specified in milestone T4 (`docs/formats/backup-v1.md`), and this ADR is updated with its test references then.
+- Status: **Accepted**, 2026-10-02, by the project owner (tool-planning session): backups live inside the sidecar's `backups/` area. The byte-level format is normative in [`docs/formats/backup-v1.md`](../formats/backup-v1.md) since Tool T4.
 - See [`tool-implementation-plan.md`](../architecture/tool-implementation-plan.md).
 
 ## 1. Context
@@ -48,11 +48,20 @@ Root §10 requires a verified backup before every destructive operation, and §9
 
 ## 6. How it is tested
 
-Milestone T4 (format) and T7 (service):
+Format and storage (T4), in `shared/sidecar/src/test/.../sidecar/backup/`:
 
-- golden `backup.json`
-- verification catching a flipped byte, a missing file, and an extra file
-- interruption at every step, leaving the backup either recorded and verified or reported as partial
-- a full disk
-- symlink refusal
-- recursion guard: `backups/` is never copied into itself
+- `BackupManifestCodecTest`:
+  - both goldens (`full.json`, `end-archive.json`) encode and decode exactly
+  - 1.0 is strict, newer minors are tolerated, other majors are refused
+  - ordering, duplicate, total, kind, and timestamp rules
+  - 2,000 mutated manifests each fail with a code
+- `BackupEntryPathTest`: real names kept verbatim; unsafe paths refused; length bounds; code-point order.
+- `BackupLifecycleTest`:
+  - write, verify, record, and re-verify against the recorded checksum
+  - a changed, missing, and unexpected file, and a changed `backup.json`
+  - a symbolic link refused
+  - an aborted commit leaves a partial backup that only `deletePartial` removes, and that refuses a recorded one
+  - an unverified backup cannot be recorded
+  - one backup is written at a time
+
+The copy service (T7) adds interruption, a full disk, cancellation, and the free-space check.
