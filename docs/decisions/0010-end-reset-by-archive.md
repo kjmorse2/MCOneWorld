@@ -83,4 +83,14 @@ If a version keeps the fight in `level.dat` instead, that version stays inspect-
   - held `session.lock` refused
   - checksum mismatch in the copy refused before any deletion
   - `level.dat` and every file outside the End dimension directory byte-identical before and after
-- Manual validation, recorded, on a disposable copy of a real 26.2 world: after the transition, Paper 26.2 generates a fresh End with a new dragon fight. This also confirms the dragon-fight file location and the Paper layout.
+- **Implemented in Tool T9** (`tool.core.transition.SeasonTransition`; operation contract [`season-transition-v1.md`](../formats/season-transition-v1.md)). `SeasonTransitionTest` covers each item above, plus:
+  - a crash at each of 22 points, resumed to the same result
+  - automatic rollback after a terminal failure, restoring the End byte for byte
+  - a rollback that meets a changed file overwrites nothing and fails, then succeeds on retry
+  - an interrupted rollback, retried explicitly
+  - rollback refused after the commit
+  - protected End chunks needing acknowledgement
+  - a world without an End
+
+  `LocalWorldTransitionTest` (`localWorldTest`) runs the whole transition on temporary copies of both local 26.2 worlds: the long-lived one archived 408 End files (40 MB) and 7,882 records in about 1 s. The originals are checked unmodified.
+- **Still to do.** Manual validation, recorded, on a disposable copy of a real 26.2 world (Tool T14): after the transition, Paper 26.2 generates a fresh End with a new dragon fight. This also confirms the dragon-fight file location and the Paper layout.

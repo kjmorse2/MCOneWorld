@@ -28,9 +28,10 @@ import java.util.Objects;
  *   <li>{@code VALIDATING}: every remaining check; a failed check fails the operation
  * </ol>
  *
- * A terminal failure in a step is recorded as {@code OPERATION_FAILED}; any other exception leaves
- * the journal where it is, so {@link #run} can be called again to resume. Nothing is retried
- * automatically.
+ * A terminal failure in a step, or a failed check, is recorded as {@code OPERATION_FAILED}, and is
+ * then rolled back at once if the work can still undo its effects ({@link
+ * OperationWork#canRollBack}). Any other exception leaves the journal where it is, so {@link #run}
+ * can be called again to resume. Nothing is retried automatically.
  */
 public final class OperationRunner {
   /** Test seam: called at named points, to simulate a crash there. */
@@ -40,6 +41,9 @@ public final class OperationRunner {
 
     void at(String point) throws IOException;
   }
+
+  /** The code for a rollback of an operation that is not failed, or cannot be undone. */
+  public static final IssueCode ROLLBACK_REFUSED = IssueCode.of("tool.operation.rollback_refused");
 
   private final Hook hook;
 
@@ -98,6 +102,8 @@ public final class OperationRunner {
                 journal,
                 new JournalEvent.OperationFailed(
                     reason(e.code(), String.valueOf(e.getMessage())), step));
+            hook.at("failed");
+            rollBackIfPossible(journal, work);
           }
           throw e;
         }
@@ -114,6 +120,8 @@ public final class OperationRunner {
         String failure = work.check(check);
         if (failure != null) {
           append(journal, new JournalEvent.OperationFailed(reason(failed, failure), null));
+          hook.at("failed");
+          rollBackIfPossible(journal, work);
           throw new ToolException(failed, failure);
         }
         append(journal, new JournalEvent.CheckPassed(check));
@@ -130,6 +138,53 @@ public final class OperationRunner {
               + journal.progress().state()
               + ": "
               + journal.progress().recommend().explanation());
+    }
+  }
+
+  /**
+   * Rolls back a failed operation, or retries an interrupted or failed rollback. {@link #run} calls
+   * this itself right after recording a failure, when {@code work} can roll back; a rollback that
+   * was interrupted or failed is retried only through an explicit call.
+   *
+   * @throws ToolException {@link #ROLLBACK_REFUSED} if the operation is not failed or rolling back,
+   *     or {@code work} cannot roll back; or the rollback's own failure, recorded as {@code
+   *     ROLLBACK_FAILED} so that it can be retried
+   * @throws IOException if the rollback is interrupted; calling again retries it
+   */
+  public void rollBack(OperationJournal journal, OperationWork work) throws IOException {
+    OperationProgress progress = journal.progress();
+    OperationState state = progress.state();
+    if (state != OperationState.FAILED
+        && state != OperationState.ROLLING_BACK
+        && state != OperationState.ROLLBACK_FAILED) {
+      throw new ToolException(
+          ROLLBACK_REFUSED,
+          "Operation " + progress.plan().id() + " is " + state + "; only a failed one rolls back");
+    }
+    if (!work.canRollBack()) {
+      throw new ToolException(
+          ROLLBACK_REFUSED,
+          "Operation "
+              + progress.plan().id()
+              + " has already committed its result; it cannot be rolled back automatically");
+    }
+    append(journal, new JournalEvent.RollbackStarted(progress.rollbackAttempts() + 1));
+    hook.at("rollback-started");
+    try {
+      work.rollback();
+    } catch (ToolException e) {
+      append(
+          journal,
+          new JournalEvent.RollbackFailed(reason(e.code(), String.valueOf(e.getMessage()))));
+      throw e;
+    }
+    hook.at("rollback-done");
+    append(journal, new JournalEvent.RollbackCompleted());
+  }
+
+  private void rollBackIfPossible(OperationJournal journal, OperationWork work) throws IOException {
+    if (work.canRollBack()) {
+      rollBack(journal, work);
     }
   }
 

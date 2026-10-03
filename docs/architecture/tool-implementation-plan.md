@@ -177,6 +177,12 @@ Each milestone is one or more commits. Its tests must pass in `./gradlew check`;
 
 **T9: Season transition** (operation `mconeworld:season_transition`, the main workflow)
 
+> **Implemented** (2026-10-03). The contract is [`season-transition-v1.md`](../formats/season-transition-v1.md). It differs from this plan in three ways:
+>
+> - The End's index records are reported and removed **after** the commit, as a retry-safe sidecar-only step. A rollback therefore never has to re-add records.
+> - The archive's entries keep their world paths (`world/dimensions/minecraft/the_end/…`).
+> - Only the vanilla 26.1+ layout is writable. Paper's layout stays inspect-only until it is verified.
+
 - **Preconditions:** pinned data version (`MUTABLE`), world unlocked, sidecar clean, no unfinished operations, a reconcile that is current (a pinned index state), and a verified backup no older than this plan.
 - **Plan and preview** show:
   - the new season (name, origins, spawn)

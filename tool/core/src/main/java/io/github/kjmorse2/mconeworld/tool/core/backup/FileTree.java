@@ -26,7 +26,7 @@ import java.util.function.Predicate;
  * @param files every regular file, relative path with {@code /} separators
  * @param issues symbolic links and other unsupported entries found
  */
-record FileTree(Path root, List<Entry> files, List<ValidationIssue> issues) {
+public record FileTree(Path root, List<Entry> files, List<ValidationIssue> issues) {
 
   /**
    * One file.
@@ -35,9 +35,9 @@ record FileTree(Path root, List<Entry> files, List<ValidationIssue> issues) {
    * @param size its size
    * @param modifiedMillis its last-modified time
    */
-  record Entry(String path, long size, long modifiedMillis) {}
+  public record Entry(String path, long size, long modifiedMillis) {}
 
-  FileTree {
+  public FileTree {
     files = List.copyOf(files);
     issues = List.copyOf(issues);
   }
@@ -46,7 +46,7 @@ record FileTree(Path root, List<Entry> files, List<ValidationIssue> issues) {
    * Walks {@code root}, skipping relative paths {@code excluded} accepts (a directory skips its
    * subtree).
    */
-  static FileTree walk(Path root, Predicate<String> excluded) throws IOException {
+  public static FileTree walk(Path root, Predicate<String> excluded) throws IOException {
     List<Entry> files = new ArrayList<>();
     List<ValidationIssue> issues = new ArrayList<>();
     walk(root, "", excluded, files, issues);
@@ -89,7 +89,7 @@ record FileTree(Path root, List<Entry> files, List<ValidationIssue> issues) {
   }
 
   /** Total size of every file. */
-  long totalBytes() {
+  public long totalBytes() {
     long total = 0;
     for (Entry e : files) {
       total = Math.addExact(total, e.size());
@@ -98,7 +98,7 @@ record FileTree(Path root, List<Entry> files, List<ValidationIssue> issues) {
   }
 
   /** A digest of every path, size, and modification time: equal digests mean an unchanged tree. */
-  Checksum fingerprint() {
+  public Checksum fingerprint() {
     MessageDigest digest;
     try {
       digest = MessageDigest.getInstance("SHA-256");
@@ -113,7 +113,7 @@ record FileTree(Path root, List<Entry> files, List<ValidationIssue> issues) {
     return Checksum.ofDigest(Checksum.Algorithm.SHA_256, digest.digest());
   }
 
-  static int compareCodePoints(String a, String b) {
+  public static int compareCodePoints(String a, String b) {
     int i = 0;
     int j = 0;
     while (i < a.length() && j < b.length()) {

@@ -23,7 +23,7 @@ It also checks that the sidecar belongs to this world (manifest 1.1's seed bindi
 
 T4, shared formats. Manifest 1.1 (world binding, pending activation, archived dimensions) and the `mconeworld-backup` 1.0 format (`docs/formats/backup-v1.md`) are in `shared:sidecar`.
 
-T5, initialization (`tool.core.init.SidecarInitializer`, operation `mconeworld:sidecar_init`). T6, reconcile (`tool.core.reconcile.Reconciler`, operation `mconeworld:reconcile`). T7, backups (`tool.core.backup.BackupService`, operation `mconeworld:backup`). T8, season planner (`tool.core.season.SeasonPlanner`). Both run through the shared journal runner (`tool.core.operation.OperationRunner`). The app still opens an empty main window.
+T5, initialization (`tool.core.init.SidecarInitializer`, operation `mconeworld:sidecar_init`). T6, reconcile (`tool.core.reconcile.Reconciler`, operation `mconeworld:reconcile`). T7, backups (`tool.core.backup.BackupService`, operation `mconeworld:backup`). T8, season planner (`tool.core.season.SeasonPlanner`). T9, season transition (`tool.core.transition.SeasonTransition`, operation `mconeworld:season_transition`). The operations run through the shared journal runner (`tool.core.operation.OperationRunner`), which also rolls back a failed operation that can still be undone. The app still opens an empty main window.
 
 ## Initializing a sidecar (T5)
 
@@ -122,3 +122,46 @@ Run this after trimming the world with MCA Selector (server stopped), or wheneve
 
 **Real world.** On the long-lived world the proposal is Overworld (27,008, 0) and Nether (3,376, 0).
 
+
+## Creating a season (T9)
+
+This is the only operation that writes to the world. The exact contract is [`docs/formats/season-transition-v1.md`](../docs/formats/season-transition-v1.md).
+
+**Prerequisites.** All must hold:
+
+- The server is stopped.
+- The world is 26.2 (data version 4903) in the vanilla 26.1+ layout.
+- The sidecar is usable and belongs to this world, with no unfinished operation.
+- No earlier season is still waiting for the server to apply it.
+- The index matches the world: reconcile first.
+- A full backup was made of the world exactly as it is now. Any change to a world file after the backup requires a new one.
+
+**The steps:**
+
+1. **Preview** (`preview(locations, request)`). The request names the season and gives its placement, usually `SeasonPlanner.propose`. The preview checks every prerequisite and the placement rules: aligned and clear, a paired Nether origin, and the spawn inside the clear area. It then shows:
+   - the new season and the season it archives
+   - the full backup it relies on
+   - the End's files, bytes, and index records
+   - how many of those records are protected; archiving them must be acknowledged
+
+   It writes nothing.
+2. **Apply** (`apply`). First re-verifies every byte of the full backup, then:
+   1. copies the End directory (`dimensions/minecraft/the_end`, which holds the dragon fight in 26.1+) into a verified archive in `backups/<operation>/`, and records it
+   2. deletes each End file only if it is byte-identical to its archived copy; any other file stops the operation
+   3. **commits**: appends the season with its origins and planned spawn, activates it pending application by the server (the previous season becomes archived), and records the archived End
+   4. writes the End's index records to `reports/season-transition-<operation>.jsonl`, then removes them from the index
+3. **Validate.** Checks:
+   - the End is gone and its archive verifies
+   - every file outside the End, including `level.dat` and player data, is unchanged
+   - the season is active and pending
+   - the index matches the world and verifies
+   - the report is complete
+4. **Next.** Start the server with the MCOneWorld plugin. It generates a fresh End and dragon fight, places the spawn, and resets players (ADR 0011). Until it has, the Tool refuses another season.
+
+**If interrupted.** **Resume** (`resume`) continues from the journal and ends exactly as an uninterrupted run would.
+
+**If it fails before the commit.** The End is restored from the archive at once. A restore never overwrites a file that differs from the archive: it stops and says which file. After that is fixed, **Roll back** (`rollBack`) retries it, and the same call also retries an interrupted restore. The archive stays recorded.
+
+**After the commit.** Nothing is undone automatically. The full backup restores the world and sidecar by hand (`RestoreInstructions`).
+
+**Real worlds.** On temporary copies of both local worlds (`localWorldTest`), the long-lived world's transition archived 408 End files (40 MB) and 7,882 records in about 1 s. **Still to do:** a recorded check that Paper 26.2 then generates a fresh End (T14).

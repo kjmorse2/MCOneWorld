@@ -2,6 +2,7 @@
 
 - File: `mconeworld-data/reports/reconcile-<operationId>.jsonl`, one per reconcile that removed records or bound the world. The sidecar manifest references it in `files`, with role `reconcile-report`, checksum, and size.
 - Written by: MCOneWorld Tool's reconcile (Tool T6, `tool.core.reconcile.Reconciler`), **before** any record is removed. Removal never loses history without a trace (root AGENTS.md §2).
+- Also written, unchanged in format, by the season transition (Tool T9) for the End's records: `reports/season-transition-<operationId>.jsonl`, role `archived-records`, dimension `minecraft:the_end` ([`season-transition-v1.md`](season-transition-v1.md) §2). Its header's `operation` is the transition.
 
 ## Content
 

@@ -60,5 +60,5 @@ The marker is root-level rather than per season, because at most one activation 
 ## 6. How it is tested
 
 - **Shared:** `ArchiveStateV11Test` (pending until marked applied, every other transition refused meanwhile, stale marker a warning, unknown season an error) and `ManifestV11Test` (1.0 still reads; the member is required in 1.1 and unknown in 1.0), plus the golden `full-1.1.json` and the manifest fuzzer.
-- **Tool:** the transition sets the marker exactly in its commit transaction, and a second transition is refused while the marker is set.
+- **Tool** (T9, `SeasonTransitionTest`): the transition sets the marker exactly in its commit transaction, together with the new season and the archived End, and a second transition is refused while the marker is set (`aSecondTransitionWaitsUntilTheServerAppliedTheFirst`).
 - **Plugin:** tests are owned by the Paper project.

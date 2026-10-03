@@ -26,4 +26,17 @@ public interface OperationWork {
 
   /** Whether {@code code} means the operation must stop for good rather than be retried. */
   boolean isTerminal(io.github.kjmorse2.mconeworld.domain.validation.IssueCode code);
+
+  /**
+   * Whether {@link #rollback} can undo what was done so far. Operations that change only the
+   * sidecar return {@code false} (their plans declare no rollback).
+   */
+  default boolean canRollBack() throws IOException {
+    return false;
+  }
+
+  /** Undoes the operation's effects; safe to retry. Called only when {@link #canRollBack} holds. */
+  default void rollback() throws IOException {
+    throw new UnsupportedOperationException("This operation has no automatic rollback");
+  }
 }

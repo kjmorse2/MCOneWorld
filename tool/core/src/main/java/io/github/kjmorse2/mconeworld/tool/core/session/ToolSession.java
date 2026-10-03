@@ -190,7 +190,8 @@ public final class ToolSession {
       List.of(
           OperationType.of("mconeworld:sidecar_init"),
           OperationType.of("mconeworld:reconcile"),
-          OperationType.of("mconeworld:backup"));
+          OperationType.of("mconeworld:backup"),
+          OperationType.of("mconeworld:season_transition"));
 
   /**
    * Whether this Tool can continue {@code op}: an intact journal of a type it knows, not finished,

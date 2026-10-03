@@ -12,6 +12,7 @@ import io.github.kjmorse2.mconeworld.domain.operation.ExpectedManifest;
 import io.github.kjmorse2.mconeworld.domain.operation.ImpactClass;
 import io.github.kjmorse2.mconeworld.domain.operation.InputKey;
 import io.github.kjmorse2.mconeworld.domain.operation.OperationPlan;
+import io.github.kjmorse2.mconeworld.domain.operation.OperationState;
 import io.github.kjmorse2.mconeworld.domain.operation.OperationTarget;
 import io.github.kjmorse2.mconeworld.domain.operation.OperationType;
 import io.github.kjmorse2.mconeworld.domain.operation.PreconditionSnapshot;
@@ -31,8 +32,10 @@ import io.github.kjmorse2.mconeworld.sidecar.backup.BackupVerification;
 import io.github.kjmorse2.mconeworld.sidecar.backup.BackupVerifier;
 import io.github.kjmorse2.mconeworld.sidecar.manifest.ManifestDocument;
 import io.github.kjmorse2.mconeworld.sidecar.manifest.ManifestException;
+import io.github.kjmorse2.mconeworld.sidecar.operation.JournalException;
 import io.github.kjmorse2.mconeworld.sidecar.operation.OperationJournal;
 import io.github.kjmorse2.mconeworld.sidecar.operation.OperationJournals;
+import io.github.kjmorse2.mconeworld.sidecar.operation.OperationStatus;
 import io.github.kjmorse2.mconeworld.sidecar.storage.BackupEntryPath;
 import io.github.kjmorse2.mconeworld.sidecar.storage.BackupFileWriter;
 import io.github.kjmorse2.mconeworld.sidecar.storage.BackupFiles;
@@ -42,7 +45,6 @@ import io.github.kjmorse2.mconeworld.sidecar.storage.SidecarStore;
 import io.github.kjmorse2.mconeworld.sidecar.storage.SidecarTransaction;
 import io.github.kjmorse2.mconeworld.sidecar.storage.SidecarWriter;
 import io.github.kjmorse2.mconeworld.sidecar.storage.StaleLockPolicy;
-import io.github.kjmorse2.mconeworld.sidecar.storage.StorageFileSystem;
 import io.github.kjmorse2.mconeworld.tool.core.ProgressListener;
 import io.github.kjmorse2.mconeworld.tool.core.ToolException;
 import io.github.kjmorse2.mconeworld.tool.core.ToolInfo;
@@ -58,17 +60,14 @@ import io.github.kjmorse2.mconeworld.tool.world.WorldInspector;
 import io.github.kjmorse2.mconeworld.tool.world.lock.SessionLockProbe;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InterruptedIOException;
 import java.nio.file.Files;
-import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
@@ -96,19 +95,17 @@ public final class BackupService {
   static final InputKey SIDECAR_FILES = InputKey.of("sidecar:files");
 
   /** Headroom over the copy's size: 5 % plus 64 MiB. */
-  static long required(long bytes) {
+  public static long required(long bytes) {
     return Math.addExact(Math.addExact(bytes, bytes / 20), 64L << 20);
   }
 
   /** Free space on the filesystem holding a directory; a seam for tests. */
   @FunctionalInterface
-  interface SpaceProbe {
+  public interface SpaceProbe {
     SpaceProbe FILESYSTEM = dir -> Files.getFileStore(dir).getUsableSpace();
 
     long usableBytes(Path dir) throws IOException;
   }
-
-  private static final int BUFFER = 1 << 20;
 
   private final Clock clock;
   private final ProgressListener progress;
@@ -394,37 +391,59 @@ public final class BackupService {
     tx.commit(next.nextRevision());
   }
 
-  /** Copies one file, hashing it on the way. Interruptible between buffers. */
   private BackupEntry copy(
       BackupFileWriter out, Path base, FileTree.Entry e, String area, long[] done, long total)
       throws IOException {
-    BackupEntryPath path = BackupEntryPath.of(area + "/" + e.path());
-    MessageDigest digest = sha256();
-    long size = 0;
-    byte[] buffer = new byte[BUFFER];
-    try (InputStream in = Files.newInputStream(base.resolve(e.path()), LinkOption.NOFOLLOW_LINKS);
-        StorageFileSystem.WritableFile file = out.createNew(path)) {
-      for (int n = in.read(buffer); n >= 0; n = in.read(buffer)) {
-        if (Thread.interrupted()) {
-          Thread.currentThread().interrupt();
-          throw new InterruptedIOException("The backup was cancelled");
-        }
-        digest.update(buffer, 0, n);
-        file.write(buffer, 0, n);
-        size += n;
-        done[0] += n;
-        progress.progress("Copying " + e.path(), done[0], total);
-      }
-      file.sync();
-    }
-    return new BackupEntry(
-        path, size, Checksum.ofDigest(Checksum.Algorithm.SHA_256, digest.digest()));
+    long start = done[0];
+    return FileCopy.copy(
+        out,
+        base.resolve(e.path()),
+        BackupEntryPath.of(area + "/" + e.path()),
+        copied -> {
+          done[0] = start + copied;
+          progress.progress("Copying " + e.path(), done[0], total);
+        });
   }
 
   // ---- helpers ---------------------------------------------------------------------------------
 
-  private static FileTree worldTree(ToolLocations locations) throws IOException {
+  /** Every file of the world a backup copies: all but {@code session.lock}. */
+  public static FileTree worldTree(ToolLocations locations) throws IOException {
     return FileTree.walk(locations.worldDir(), path -> path.equals(SessionLockProbe.FILE_NAME));
+  }
+
+  /**
+   * The newest recorded full backup that holds the world exactly as it is now: its backup operation
+   * completed, and the world's paths, sizes, and modification times equal those it pinned.
+   * Read-only; the backup's bytes are not re-verified here (see {@link #verify}).
+   */
+  public static Optional<BackupRecord> currentFullBackup(ToolLocations locations)
+      throws IOException {
+    SidecarStore store = SidecarStore.open(SidecarRoot.open(locations.sidecarDir()));
+    Checksum now = worldTree(locations).fingerprint();
+    OperationJournals journals = OperationJournals.of(store, Clock.systemUTC());
+    List<BackupRecord> newestFirst = new ArrayList<>(manifest(store).state().backups());
+    newestFirst.sort(Comparator.comparing(BackupRecord::createdAt).reversed());
+    for (BackupRecord record : newestFirst) {
+      OperationId operation = record.operation();
+      if (operation == null || !backupOf(operation).equals(record.id())) {
+        continue;
+      }
+      OperationStatus status;
+      try {
+        status = journals.inspect(operation);
+      } catch (JournalException e) {
+        continue; // its journal is gone: the backup cannot be matched to a world state
+      }
+      if (status.plan() != null
+          && status.progress() != null
+          && status.plan().plan().type().equals(TYPE)
+          && status.progress().state() == OperationState.COMPLETED
+          && now.equals(status.plan().plan().preconditions().checksums().get(WORLD_FILES))) {
+        return Optional.of(record);
+      }
+    }
+    return Optional.empty();
   }
 
   /**
@@ -500,14 +519,6 @@ public final class BackupService {
     } catch (ManifestException e) {
       throw new ToolException(
           BackupIssueCodes.CHANGED, "The manifest cannot be read", e.issues(), e);
-    }
-  }
-
-  private static MessageDigest sha256() {
-    try {
-      return MessageDigest.getInstance("SHA-256");
-    } catch (NoSuchAlgorithmException e) {
-      throw new IllegalStateException(e);
     }
   }
 }
