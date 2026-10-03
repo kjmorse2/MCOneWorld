@@ -76,6 +76,22 @@ class LocalWorldInitTest {
                   locations, record.id())
               .verified());
       assertThat(ToolSession.inspect(locations, Clock.systemUTC()).findings().isValid()).isTrue();
+      var chunks =
+          io.github.kjmorse2.mconeworld.tool.core.inventory.WorldChunks.collect(
+              io.github.kjmorse2.mconeworld.tool.world.WorldInspector.inspect(world),
+              ProgressListener.NONE);
+      var archive = status.sidecar().manifest().orElseThrow().document().state();
+      var proposal =
+          new io.github.kjmorse2.mconeworld.tool.core.season.SeasonPlanner(
+                  io.github.kjmorse2.mconeworld.tool.core.season.PlannerSettings.DEFAULT)
+              .propose(chunks, archive)
+              .orElseThrow();
+      System.out.printf(
+          "  proposed season origin: Overworld (%d, %d), Nether (%d, %d)%n",
+          proposal.overworld().x(),
+          proposal.overworld().z(),
+          proposal.nether().x(),
+          proposal.nether().z());
       assertThat(lastModified(world)).as("the world was not modified").isEqualTo(before);
     }
   }

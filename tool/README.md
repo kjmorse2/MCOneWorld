@@ -23,7 +23,7 @@ It also checks that the sidecar belongs to this world (manifest 1.1's seed bindi
 
 T4, shared formats. Manifest 1.1 (world binding, pending activation, archived dimensions) and the `mconeworld-backup` 1.0 format (`docs/formats/backup-v1.md`) are in `shared:sidecar`.
 
-T5, initialization (`tool.core.init.SidecarInitializer`, operation `mconeworld:sidecar_init`). T6, reconcile (`tool.core.reconcile.Reconciler`, operation `mconeworld:reconcile`). T7, backups (`tool.core.backup.BackupService`, operation `mconeworld:backup`). Both run through the shared journal runner (`tool.core.operation.OperationRunner`). The app still opens an empty main window.
+T5, initialization (`tool.core.init.SidecarInitializer`, operation `mconeworld:sidecar_init`). T6, reconcile (`tool.core.reconcile.Reconciler`, operation `mconeworld:reconcile`). T7, backups (`tool.core.backup.BackupService`, operation `mconeworld:backup`). T8, season planner (`tool.core.season.SeasonPlanner`). Both run through the shared journal runner (`tool.core.operation.OperationRunner`). The app still opens an empty main window.
 
 ## Initializing a sidecar (T5)
 
@@ -105,4 +105,20 @@ Run this after trimming the world with MCA Selector (server stopped), or wheneve
 **Restore.** Restore is manual for now: `RestoreInstructions.forFullBackup` gives the exact steps. They move the current world and sidecar aside (never delete them), copy the backup's `world/` and `sidecar/` back, and keep every backup.
 
 **Real worlds.** On the long-lived world, 2,288 files (1.1 GB) were copied and verified in 3.3 s on a RAM disk (`localWorldTest`). Expect disk speed on a real disk.
+
+## Planning a season's origin (T8)
+
+`SeasonPlanner` is pure logic, and the season transition (T9) uses it.
+
+**Rules.** An Overworld origin is valid when:
+
+- **Aligned.** It is a multiple of 128 blocks, so its Nether counterpart (÷8) is chunk-aligned. A misaligned pick is reported with the nearest aligned alternatives; it is never rounded.
+- **Inside the border.** The square of `clearanceBlocks` around it (10,000 by default, configurable) fits inside the vanilla world border.
+- **Clear.** That square holds no generated Overworld chunk, its ÷8 counterpart holds no generated Nether chunk, and it overlaps no other non-cancelled season's square.
+
+**Proposal.** `propose` places the origin just beyond the bounding box of everything that exists, on the axis direction nearest to (0, 0). The result is valid by construction, and validated anyway.
+
+**Spawn.** The spawn is planned at the origin's X/Z at a nominal Y. The server finds a safe height when it applies the season (ADR 0011).
+
+**Real world.** On the long-lived world the proposal is Overworld (27,008, 0) and Nether (3,376, 0).
 
